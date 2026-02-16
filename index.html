@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jenna & Liam | July 24, 2027</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header id="home" class="site-header">
+    <div class="crest">
+      <svg class="oak-crest" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="watercolor" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="2" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+            <feGaussianBlur in="displaced" stdDeviation="0.6" result="blurred"/>
+          </filter>
+          <linearGradient id="leaf-green-1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7a9a6d" stop-opacity="0.85"/>
+            <stop offset="100%" stop-color="#5c7a4e" stop-opacity="0.6"/>
+          </linearGradient>
+          <linearGradient id="leaf-green-2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#8aaa7a" stop-opacity="0.75"/>
+            <stop offset="100%" stop-color="#6b8f5c" stop-opacity="0.5"/>
+          </linearGradient>
+          <linearGradient id="leaf-sage" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#9bb08e" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#7a9a6d" stop-opacity="0.45"/>
+          </linearGradient>
+          <linearGradient id="leaf-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#5c7a4e" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#4a6840" stop-opacity="0.55"/>
+          </linearGradient>
+          <linearGradient id="branch-brown" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#8b7355" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#6b5b45" stop-opacity="0.5"/>
+          </linearGradient>
+        </defs>
+
+        <g filter="url(#watercolor)">
+          <!-- LEFT BRANCH -->
+          <path d="M200,275 Q170,240 140,200 Q115,165 95,130 Q80,100 78,70"
+                fill="none" stroke="url(#branch-brown)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Left small branch offshoot -->
+          <path d="M140,200 Q125,195 115,205"
+                fill="none" stroke="url(#branch-brown)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M110,150 Q95,148 85,158"
+                fill="none" stroke="url(#branch-brown)" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- LEFT OAK LEAVES -->
+          <!-- Leaf L1 (lower) -->
+          <path d="M155,225 Q148,218 142,222 Q136,215 130,220 Q125,213 120,218 Q115,212 112,218
+                   Q116,225 122,220 Q128,228 134,222 Q140,230 146,224 Q152,232 155,225Z"
+                fill="url(#leaf-green-1)" transform="rotate(-25, 137, 222)"/>
+          <!-- Leaf L2 -->
+          <path d="M130,190 Q123,183 117,187 Q111,180 105,185 Q100,178 95,183 Q90,177 87,183
+                   Q91,190 97,185 Q103,193 109,187 Q115,195 121,189 Q127,197 130,190Z"
+                fill="url(#leaf-green-2)" transform="rotate(-35, 110, 188)"/>
+          <!-- Leaf L3 -->
+          <path d="M115,160 Q108,153 102,157 Q96,150 90,155 Q85,148 80,153 Q75,147 72,153
+                   Q76,160 82,155 Q88,163 94,157 Q100,165 106,159 Q112,167 115,160Z"
+                fill="url(#leaf-sage)" transform="rotate(-40, 95, 158)"/>
+          <!-- Leaf L4 (upper) -->
+          <path d="M98,125 Q91,118 85,122 Q79,115 73,120 Q68,113 63,118 Q58,112 55,118
+                   Q59,125 65,120 Q71,128 77,122 Q83,130 89,124 Q95,132 98,125Z"
+                fill="url(#leaf-dark)" transform="rotate(-50, 78, 123)"/>
+          <!-- Leaf L5 (top) -->
+          <path d="M88,95 Q81,88 75,92 Q69,85 63,90 Q58,83 53,88
+                   Q57,95 63,90 Q69,98 75,92 Q81,100 88,95Z"
+                fill="url(#leaf-green-1)" transform="rotate(-55, 70, 92)"/>
+          <!-- Small leaf on offshoot -->
+          <path d="M120,200 Q115,195 110,198 Q106,193 102,197
+                   Q105,202 109,199 Q114,204 120,200Z"
+                fill="url(#leaf-sage)" transform="rotate(-15, 112, 198)"/>
+          <path d="M92,155 Q87,150 82,153 Q78,148 74,152
+                   Q77,157 81,154 Q86,159 92,155Z"
+                fill="url(#leaf-green-2)" transform="rotate(-20, 84, 153)"/>
+
+          <!-- LEFT ACORNS -->
+          <ellipse cx="108" cy="172" rx="3" ry="4.5" fill="#8b7355" opacity="0.55"/>
+          <path d="M105,168 Q108,166 111,168 L110,170 Q108,169 106,170Z" fill="#6b5b45" opacity="0.5"/>
+
+          <!-- RIGHT BRANCH (mirrored) -->
+          <path d="M200,275 Q230,240 260,200 Q285,165 305,130 Q320,100 322,70"
+                fill="none" stroke="url(#branch-brown)" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M260,200 Q275,195 285,205"
+                fill="none" stroke="url(#branch-brown)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M290,150 Q305,148 315,158"
+                fill="none" stroke="url(#branch-brown)" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- RIGHT OAK LEAVES -->
+          <!-- Leaf R1 (lower) -->
+          <path d="M245,225 Q252,218 258,222 Q264,215 270,220 Q275,213 280,218 Q285,212 288,218
+                   Q284,225 278,220 Q272,228 266,222 Q260,230 254,224 Q248,232 245,225Z"
+                fill="url(#leaf-green-1)" transform="rotate(25, 263, 222)"/>
+          <!-- Leaf R2 -->
+          <path d="M270,190 Q277,183 283,187 Q289,180 295,185 Q300,178 305,183 Q310,177 313,183
+                   Q309,190 303,185 Q297,193 291,187 Q285,195 279,189 Q273,197 270,190Z"
+                fill="url(#leaf-green-2)" transform="rotate(35, 290, 188)"/>
+          <!-- Leaf R3 -->
+          <path d="M285,160 Q292,153 298,157 Q304,150 310,155 Q315,148 320,153 Q325,147 328,153
+                   Q324,160 318,155 Q312,163 306,157 Q300,165 294,159 Q288,167 285,160Z"
+                fill="url(#leaf-sage)" transform="rotate(40, 305, 158)"/>
+          <!-- Leaf R4 (upper) -->
+          <path d="M302,125 Q309,118 315,122 Q321,115 327,120 Q332,113 337,118 Q342,112 345,118
+                   Q341,125 335,120 Q329,128 323,122 Q317,130 311,124 Q305,132 302,125Z"
+                fill="url(#leaf-dark)" transform="rotate(50, 322, 123)"/>
+          <!-- Leaf R5 (top) -->
+          <path d="M312,95 Q319,88 325,92 Q331,85 337,90 Q342,83 347,88
+                   Q343,95 337,90 Q331,98 325,92 Q319,100 312,95Z"
+                fill="url(#leaf-green-1)" transform="rotate(55, 330, 92)"/>
+          <!-- Small leaves on offshoots -->
+          <path d="M280,200 Q285,195 290,198 Q294,193 298,197
+                   Q295,202 291,199 Q286,204 280,200Z"
+                fill="url(#leaf-sage)" transform="rotate(15, 288, 198)"/>
+          <path d="M308,155 Q313,150 318,153 Q322,148 326,152
+                   Q323,157 319,154 Q314,159 308,155Z"
+                fill="url(#leaf-green-2)" transform="rotate(20, 316, 153)"/>
+
+          <!-- RIGHT ACORNS -->
+          <ellipse cx="292" cy="172" rx="3" ry="4.5" fill="#8b7355" opacity="0.55"/>
+          <path d="M289,168 Q292,166 295,168 L294,170 Q292,169 290,170Z" fill="#6b5b45" opacity="0.5"/>
+        </g>
+      </svg>
+    </div>
+
+    <h1 class="couple-names">Jenna <span class="ampersand">&amp;</span> Liam</h1>
+    <p class="wedding-meta wedding-date">July 24, 2027</p>
+    <p class="wedding-meta wedding-venue">Fairview Laguna Seca &middot; Monterey, California</p>
+    <div class="countdown" id="countdown"></div>
+  </header>
+
+  <!-- ============ NAVIGATION ============ -->
+  <nav class="main-nav" id="main-nav">
+    <div class="nav-inner">
+      <span class="nav-brand">J &amp; L</span>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#home">Home</a></li>
+        <li><a href="#our-story">Our Story</a></li>
+        <li><a href="#travel">Travel</a></li>
+        <li><a href="#things-to-do">Things to Do</a></li>
+        <li><a href="#photos">Photos</a></li>
+        <li><a href="#wedding-party">Wedding Party</a></li>
+        <li><a href="#registry">Registry</a></li>
+        <li><a href="#rsvp">RSVP</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <img src="images/10.JPG" alt="Jenna and Liam walking on the beach with their dog in Monterey" width="1600" height="1067" loading="eager">
+  </section>
+
+  <!-- ============ OUR STORY ============ -->
+  <section id="our-story" class="content-section">
+    <h2 class="section-heading">Our Story</h2>
+    <div class="section-divider"></div>
+
+    <div class="story-block">
+      <p>We first met through mutual friends during a weekend trip to the coast. What started as a simple conversation turned into hours of talking, laughing, and discovering just how much we had in common. By the end of that trip, we both knew something special had begun.</p>
+    </div>
+
+    <div class="story-image">
+      <img src="images/3.JPG" alt="Jenna and Liam together on the beach" width="800" height="1200" loading="lazy">
+    </div>
+
+    <div class="story-block">
+      <p>After years of adventures together&mdash;from road trips along the California coast to quiet evenings at home with our dog&mdash;Liam planned the most beautiful beach proposal. On a golden evening in Monterey, with the waves crashing behind us, he got down on one knee and asked the question that changed everything.</p>
+    </div>
+
+    <div class="story-images-pair">
+      <img src="images/4.JPG" alt="Liam proposing to Jenna on the beach" width="800" height="1200" loading="lazy">
+      <img src="images/7.JPG" alt="Jenna showing off her engagement ring" width="800" height="1200" loading="lazy">
+    </div>
+
+    <div class="story-block">
+      <p>Now we can't wait to celebrate the next chapter with the people we love most. Thank you for being part of our story.</p>
+    </div>
+  </section>
+
+  <!-- ============ TRAVEL ============ -->
+  <section id="travel" class="content-section">
+    <h2 class="section-heading">Travel</h2>
+    <div class="section-divider"></div>
+
+    <div class="travel-cards">
+      <div class="travel-card">
+        <h3>The Venue</h3>
+        <p class="travel-name">Fairview Laguna Seca</p>
+        <p>10520 York Road<br>Monterey, CA 93940</p>
+      </div>
+
+      <div class="travel-card">
+        <h3>Hotels</h3>
+        <div class="travel-item">
+          <p class="travel-name">Hotel Pacific</p>
+          <p>300 Pacific Street, Monterey</p>
+        </div>
+        <div class="travel-item">
+          <p class="travel-name">Portola Hotel &amp; Spa</p>
+          <p>Two Portola Plaza, Monterey</p>
+        </div>
+        <div class="travel-item">
+          <p class="travel-name">Monterey Plaza Hotel</p>
+          <p>400 Cannery Row, Monterey</p>
+        </div>
+      </div>
+
+      <div class="travel-card">
+        <h3>Getting There</h3>
+        <div class="travel-item">
+          <p class="travel-name">Monterey Regional (MRY)</p>
+          <p>15 minutes from venue</p>
+        </div>
+        <div class="travel-item">
+          <p class="travel-name">San Jose International (SJC)</p>
+          <p>1.5 hours from venue</p>
+        </div>
+        <div class="travel-item">
+          <p class="travel-name">San Francisco International (SFO)</p>
+          <p>2 hours from venue</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ THINGS TO DO ============ -->
+  <section id="things-to-do" class="content-section">
+    <h2 class="section-heading">Things to Do</h2>
+    <div class="section-divider"></div>
+    <p class="section-intro">Monterey is a beautiful destination with so much to explore. Here are some of our favorite spots to visit while you're in town.</p>
+
+    <div class="activities-grid">
+      <div class="activity-card">
+        <h3>Monterey Bay Aquarium</h3>
+        <p>One of the world's premier aquariums, featuring stunning exhibits of marine life from the Monterey Bay and beyond.</p>
+      </div>
+      <div class="activity-card">
+        <h3>Cannery Row</h3>
+        <p>A historic waterfront street with charming shops, restaurants, wine tasting rooms, and ocean views.</p>
+      </div>
+      <div class="activity-card">
+        <h3>17-Mile Drive</h3>
+        <p>A scenic drive through Pacific Grove and Pebble Beach, passing iconic landmarks like the Lone Cypress.</p>
+      </div>
+      <div class="activity-card">
+        <h3>Big Sur</h3>
+        <p>Just an hour south, experience some of the most dramatic coastline in the world. Don't miss Bixby Bridge and McWay Falls.</p>
+      </div>
+      <div class="activity-card">
+        <h3>Carmel-by-the-Sea</h3>
+        <p>A fairytale village with art galleries, boutique shopping, and the beautiful Carmel Beach just blocks from downtown.</p>
+      </div>
+      <div class="activity-card">
+        <h3>Carmel Valley Wine Tasting</h3>
+        <p>Explore the sunny Carmel Valley wine region with over 30 tasting rooms just a short drive inland.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PHOTOS ============ -->
+  <section id="photos" class="content-section">
+    <h2 class="section-heading">Photos</h2>
+    <div class="section-divider"></div>
+
+    <div class="photo-gallery">
+      <img src="images/6.JPG" alt="Jenna and Liam embracing on the beach" loading="lazy">
+      <img src="images/1.JPG" alt="Jenna and Liam close-up portrait" loading="lazy">
+      <img src="images/12.JPG" alt="Jenna and Liam walking hand in hand" loading="lazy">
+      <img src="images/2.JPG" alt="Jenna and Liam smiling together" loading="lazy">
+      <img src="images/8.JPG" alt="Jenna and Liam full-length embrace on beach" loading="lazy">
+      <img src="images/5.JPG" alt="Jenna reacting to the proposal" loading="lazy">
+      <img src="images/9.JPG" alt="Jenna and Liam kissing on the beach" loading="lazy">
+      <img src="images/11.JPG" alt="Hands clasped showing engagement ring" loading="lazy">
+    </div>
+  </section>
+
+  <!-- ============ WEDDING PARTY ============ -->
+  <section id="wedding-party" class="content-section">
+    <h2 class="section-heading">Wedding Party</h2>
+    <div class="section-divider"></div>
+
+    <div class="party-columns">
+      <div class="party-group">
+        <h3>Bridesmaids</h3>
+        <div class="party-member">
+          <p class="member-name">Maid of Honor Name</p>
+          <p class="member-role">Maid of Honor</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Bridesmaid Name</p>
+          <p class="member-role">Bridesmaid</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Bridesmaid Name</p>
+          <p class="member-role">Bridesmaid</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Bridesmaid Name</p>
+          <p class="member-role">Bridesmaid</p>
+        </div>
+      </div>
+
+      <div class="party-group">
+        <h3>Groomsmen</h3>
+        <div class="party-member">
+          <p class="member-name">Best Man Name</p>
+          <p class="member-role">Best Man</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Groomsman Name</p>
+          <p class="member-role">Groomsman</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Groomsman Name</p>
+          <p class="member-role">Groomsman</p>
+        </div>
+        <div class="party-member">
+          <p class="member-name">Groomsman Name</p>
+          <p class="member-role">Groomsman</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REGISTRY ============ -->
+  <section id="registry" class="content-section">
+    <h2 class="section-heading">Registry</h2>
+    <div class="section-divider"></div>
+
+    <p class="section-intro">Your presence at our wedding is the greatest gift of all. However, if you wish to honor us with a gift, we've registered at the following places.</p>
+
+    <div class="registry-links">
+      <a href="#" class="registry-btn">Crate &amp; Barrel</a>
+      <a href="#" class="registry-btn">Amazon</a>
+      <a href="#" class="registry-btn">Honeymoon Fund</a>
+    </div>
+  </section>
+
+  <!-- ============ RSVP ============ -->
+  <section id="rsvp" class="content-section">
+    <h2 class="section-heading">RSVP</h2>
+    <div class="section-divider"></div>
+
+    <p class="section-intro">We can't wait to celebrate with you! Please let us know if you'll be joining us by May 24, 2027.</p>
+
+    <form class="rsvp-form" id="rsvp-form" action="#" method="POST">
+      <div class="form-group">
+        <label for="rsvp-name">Full Name</label>
+        <input type="text" id="rsvp-name" name="name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="rsvp-email">Email Address</label>
+        <input type="email" id="rsvp-email" name="email" required>
+      </div>
+
+      <div class="form-group">
+        <label>Will you be attending?</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="attending" value="yes" required>
+            <span>Joyfully Accepts</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="attending" value="no">
+            <span>Regretfully Declines</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="rsvp-guests">Number of Guests</label>
+        <select id="rsvp-guests" name="guests">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="rsvp-dietary">Dietary Restrictions</label>
+        <input type="text" id="rsvp-dietary" name="dietary" placeholder="e.g., vegetarian, gluten-free, allergies">
+      </div>
+
+      <div class="form-group">
+        <label for="rsvp-message">Message for the Couple</label>
+        <textarea id="rsvp-message" name="message" rows="4" placeholder="Share your well wishes..."></textarea>
+      </div>
+
+      <button type="submit" class="submit-btn">Send RSVP</button>
+    </form>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="site-footer">
+    <div class="crest crest--small">
+      <svg class="oak-crest oak-crest--small" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+        <use href="#watercolor"/>
+        <defs>
+          <filter id="watercolor-sm" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="2" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+            <feGaussianBlur in="displaced" stdDeviation="0.6"/>
+          </filter>
+        </defs>
+        <g filter="url(#watercolor-sm)" opacity="0.6">
+          <path d="M200,275 Q170,240 140,200 Q115,165 95,130 Q80,100 78,70" fill="none" stroke="#8b7355" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+          <path d="M200,275 Q230,240 260,200 Q285,165 305,130 Q320,100 322,70" fill="none" stroke="#8b7355" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+          <path d="M130,190 Q123,183 117,187 Q111,180 105,185 Q100,178 95,183 Q90,177 87,183 Q91,190 97,185 Q103,193 109,187 Q115,195 121,189 Q127,197 130,190Z" fill="#7a9a6d" opacity="0.5" transform="rotate(-35, 110, 188)"/>
+          <path d="M270,190 Q277,183 283,187 Q289,180 295,185 Q300,178 305,183 Q310,177 313,183 Q309,190 303,185 Q297,193 291,187 Q285,195 279,189 Q273,197 270,190Z" fill="#7a9a6d" opacity="0.5" transform="rotate(35, 290, 188)"/>
+          <path d="M115,160 Q108,153 102,157 Q96,150 90,155 Q85,148 80,153 Q75,147 72,153 Q76,160 82,155 Q88,163 94,157 Q100,165 106,159 Q112,167 115,160Z" fill="#8aaa7a" opacity="0.45" transform="rotate(-40, 95, 158)"/>
+          <path d="M285,160 Q292,153 298,157 Q304,150 310,155 Q315,148 320,153 Q325,147 328,153 Q324,160 318,155 Q312,163 306,157 Q300,165 294,159 Q288,167 285,160Z" fill="#8aaa7a" opacity="0.45" transform="rotate(40, 305, 158)"/>
+        </g>
+      </svg>
+    </div>
+    <p class="footer-names">Jenna &amp; Liam</p>
+    <p class="footer-date">July 24, 2027 &middot; Monterey, California</p>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
