@@ -5,7 +5,7 @@
    SETUP INSTRUCTIONS:
    1. Create a Google Spreadsheet with two sheets (tabs):
       - "GuestList" with columns: guestId, partyId, displayName, relationship, hasResponded
-      - "Responses" with columns: timestamp, partyId, guestId, guestName, attending, mealChoice, dietaryRestrictions, songRequest, photoFileId, photoFileName, submittedBy, specialSong
+      - "Responses" with columns: timestamp, partyId, guestId, guestName, attending, mealChoice, dietaryRestrictions, songRequest, submittedBy, specialSong, email
    2. Create a Google Drive folder for photo uploads
    3. Replace SPREADSHEET_ID and PHOTO_FOLDER_ID below with your actual IDs
    4. Deploy: Deploy > New deployment > Web app
@@ -153,10 +153,9 @@ function submitRsvp(data) {
       g.mealChoice || '',
       g.dietaryRestrictions || '',
       g.songRequest || '',
-      '',
-      '',
       data.submittedBy,
-      data.specialSong || ''   // Column L: special song (for married/partnered guests)
+      data.specialSong || '',  // Column J: special song (for married/partnered guests)
+      data.email || ''         // Column K: email address
     ]);
 
     // Update GuestList for this guest
@@ -227,7 +226,10 @@ function getAttendees(excludeParty) {
     }
     // Sort priority: adults first, then children, then plus-ones
     var sortOrder = relationship === 'adult' ? 0 : (relationship === 'child' ? 1 : 2);
-    partyMap[partyId].members.push({ name: displayName, sortOrder: sortOrder });
+    // Extract last name for alphabetical sorting
+    var nameParts = String(displayName).trim().split(' ');
+    var lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+    partyMap[partyId].members.push({ name: displayName, sortOrder: sortOrder, lastName: lastName.toLowerCase() });
   }
 
   // Group parties by side
@@ -236,19 +238,28 @@ function getAttendees(excludeParty) {
   var partyIds = Object.keys(partyMap);
   for (var k = 0; k < partyIds.length; k++) {
     var party = partyMap[partyIds[k]];
-    // Sort members within party
-    party.members.sort(function (a, b) { return a.sortOrder - b.sortOrder; });
+    // Sort members within party: adults first, then children — alphabetical by last name within each group
+    party.members.sort(function (a, b) {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return a.lastName < b.lastName ? -1 : (a.lastName > b.lastName ? 1 : 0);
+    });
     var names = [];
     for (var n = 0; n < party.members.length; n++) {
       names.push(party.members[n].name);
     }
-    var entry = { partyId: partyIds[k], names: names };
+    // Use the first adult's last name for sorting parties against each other
+    var partyLastName = party.members[0] ? party.members[0].lastName : '';
+    var entry = { partyId: partyIds[k], names: names, sortName: partyLastName };
     if (party.side === 'groom') {
       groom.push(entry);
     } else {
       bride.push(entry);
     }
   }
+
+  // Sort parties alphabetically by last name
+  bride.sort(function (a, b) { return a.sortName < b.sortName ? -1 : (a.sortName > b.sortName ? 1 : 0); });
+  groom.sort(function (a, b) { return a.sortName < b.sortName ? -1 : (a.sortName > b.sortName ? 1 : 0); });
 
   return jsonResponse({ bride: bride, groom: groom });
 }

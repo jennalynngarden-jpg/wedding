@@ -24,8 +24,9 @@
     dietaryRestrictions: {},
     songRequest: '',
     specialSong: '',
+    email: '',
     partnershipStatus: '',
-    stepFlow: ['1', '2', '3', '4'],  // Default flow; rebuilt after fetching party data
+    stepFlow: ['1', '2', 'email', '3', '4'],  // Default flow; rebuilt after fetching party data
     photoFile: null,
     photoBase64: null
   };
@@ -35,7 +36,7 @@
   // Builds the ordered list of step IDs based on whether the guest
   // is married or in a long-term partnership. Called after fetching party data.
   function buildStepFlow() {
-    var flow = ['1', '2', '3'];
+    var flow = ['1', '2', 'email', '3'];
     if (state.partnershipStatus === 'married' || state.partnershipStatus === 'partner') {
       flow.push('special-song');
     }
@@ -450,6 +451,7 @@
       partyId: state.selectedGuest.partyId,
       submittedBy: state.selectedGuest.guestId,
       specialSong: state.specialSong,
+      email: state.email,
       guests: guests
     };
 
@@ -611,6 +613,20 @@
           return false;
         }
       }
+    }
+    if (state.currentStep === 'email') {
+      var emailInput = document.getElementById('guest-email');
+      var email = emailInput.value.trim();
+      if (!email) {
+        showModal('Email missing', 'Please enter your email address so we can send you updates.');
+        return false;
+      }
+      // Basic email format check
+      if (email.indexOf('@') === -1 || email.indexOf('.') === -1) {
+        showModal('Invalid email', 'Please enter a valid email address.');
+        return false;
+      }
+      state.email = email;
     }
     if (state.currentStep === '3') {
       var members = getSelectedMembers();
