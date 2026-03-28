@@ -193,11 +193,13 @@
         state.partyMembers = [];
         for (var i = 0; i < data.members.length; i++) {
           var m = data.members[i];
+          var defaultAttending = m.rehearsalDinner ? 'wedding-and-rehearsal' : 'yes';
           state.partyMembers.push({
             guestId: m.guestId,
             displayName: m.displayName,
             relationship: m.relationship,
-            attending: m.relationship !== 'plusone' ? 'yes' : 'no'
+            rehearsalDinner: !!m.rehearsalDinner,
+            attending: defaultAttending
           });
         }
 
@@ -222,15 +224,31 @@
 
   function renderPartyMembers() {
     var container = document.getElementById('party-members');
-    var html = '';
+
+    // Header row with "Attendance" label
+    var html = '<div class="party-member-row" style="border-bottom:none;padding-bottom:0;">' +
+      '<span class="party-member-name"></span>' +
+      '<span style="font-family:var(--font-sans);font-size:0.72rem;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-text-light);">Attendance</span>' +
+      '</div>';
+
     for (var i = 0; i < state.partyMembers.length; i++) {
       var m = state.partyMembers[i];
       var isPlusOne = m.relationship === 'plusone';
 
-      var selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
-        '<option value="yes"' + (m.attending === 'yes' ? ' selected' : '') + '>Coming</option>' +
-        '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
-        '</select>';
+      // Build dropdown options based on rehearsal dinner invitation
+      var selectHtml;
+      if (m.rehearsalDinner) {
+        selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
+          '<option value="wedding-and-rehearsal"' + (m.attending === 'wedding-and-rehearsal' ? ' selected' : '') + '>Wedding &amp; rehearsal</option>' +
+          '<option value="wedding-only"' + (m.attending === 'wedding-only' ? ' selected' : '') + '>Wedding only</option>' +
+          '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
+          '</select>';
+      } else {
+        selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
+          '<option value="yes"' + (m.attending === 'yes' ? ' selected' : '') + '>Attending wedding</option>' +
+          '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
+          '</select>';
+      }
 
       if (isPlusOne) {
         var primaryName = state.selectedGuest ? state.selectedGuest.displayName.split(' ')[0] : 'Guest';
@@ -269,7 +287,7 @@
   function getSelectedMembers() {
     var selected = [];
     for (var i = 0; i < state.partyMembers.length; i++) {
-      if (state.partyMembers[i].attending === 'yes') {
+      if (state.partyMembers[i].attending !== 'no') {
         selected.push(state.partyMembers[i]);
       }
     }
@@ -279,7 +297,7 @@
   function getUnselectedMembers() {
     var unselected = [];
     for (var i = 0; i < state.partyMembers.length; i++) {
-      if (state.partyMembers[i].attending !== 'yes') {
+      if (state.partyMembers[i].attending === 'no') {
         unselected.push(state.partyMembers[i]);
       }
     }
@@ -428,7 +446,7 @@
       guests.push({
         guestId: m.guestId,
         guestName: m.displayName,
-        attending: 'yes',
+        attending: m.attending,
         mealChoice: state.mealChoices[m.guestId] || '',
         dietaryRestrictions: state.dietaryRestrictions[m.guestId] || '',
         songRequest: state.songRequest

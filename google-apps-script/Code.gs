@@ -21,6 +21,7 @@
      E: hasResponded        (FALSE — set to TRUE automatically on submission)
      F: side                ("bride" or "groom")
      G: partnershipStatus   ("married", "partner", or empty)
+     H: rehearsalDinner     (TRUE or FALSE — invited to rehearsal dinner)
 
    SEARCH BEHAVIOR:
      All guests with relationship "adult" appear in search results.
@@ -125,7 +126,8 @@ function getParty(guestId) {
       members.push({
         guestId: data[i][0],
         displayName: data[i][2],   // Column C
-        relationship: data[i][3]   // Column D
+        relationship: data[i][3],  // Column D
+        rehearsalDinner: data[i][7] === true || String(data[i][7]).toUpperCase() === 'TRUE'  // Column H
       });
     }
   }
@@ -204,7 +206,8 @@ function getAttendees(excludeParty) {
   for (var i = 1; i < responseData.length; i++) {
     var guestId = responseData[i][2];    // Column C: guestId
     var attending = responseData[i][4];  // Column E: attending
-    if (String(attending).toLowerCase() === 'yes') {
+    var val = String(attending).toLowerCase();
+    if (val === 'yes' || val === 'wedding-and-rehearsal' || val === 'wedding-only') {
       attendingIds[guestId] = true;
     }
   }
