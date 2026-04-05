@@ -285,7 +285,7 @@ p {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30%;
+  height: 50%;
   background: linear-gradient(to bottom, transparent, var(--color-bg));
   pointer-events: none;
 }
@@ -298,6 +298,22 @@ p {
 }
 
 /* ---------- 9. Our Story ---------- */
+
+/* Left-align story text */
+.our-story-section {
+  text-align: left;
+}
+
+.our-story-section .section-heading,
+.our-story-section .section-divider {
+  text-align: center;
+}
+
+.our-story-section .section-divider {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .story-block {
   margin-bottom: 2.5rem;
 }
@@ -306,30 +322,200 @@ p {
   font-family: var(--font-sans);
   font-weight: 300;
   line-height: 1.85;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 1rem;
 }
 
-.story-image {
-  max-width: 500px;
-  margin: 0 auto 2.5rem;
+.story-block p:last-child {
+  margin-bottom: 0;
 }
 
-.story-image img {
-  width: 100%;
+/* Story photo strips */
+.story-photos {
+  position: relative;
+  margin-bottom: 2.5rem;
 }
 
-.story-images-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  max-width: 700px;
-  margin: 0 auto 2.5rem;
+/* Inner wrapper clips the photos but lets arrows sit outside */
+.story-photos-track-container {
+  overflow: hidden;
 }
 
-.story-images-pair img {
+.story-photos-track {
+  display: flex;
+  gap: 0.75rem;
+  transition: transform 0.4s ease;
+}
+
+.story-photos-track img {
+  height: 240px;
+  width: auto;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.3s ease;
+}
+
+.story-photos-track img:hover {
+  opacity: 0.85;
+}
+
+/* Story photo strip arrows */
+.story-photos-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--color-text);
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.story-photos-arrow:hover {
+  background: white;
+  border-color: var(--color-sage);
+  color: var(--color-sage);
+}
+
+.story-photos-arrow--left {
+  left: -3rem;
+}
+
+.story-photos-arrow--right {
+  right: -3rem;
+}
+
+.story-photos-arrow[disabled] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Story photo grid — simple image row, no carousel */
+.story-photos-grid {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+}
+
+/* Default grid: equal-width images (works for prom, grad where photos are similar) */
+.story-photos-grid img {
+  flex: 1;
+  min-width: 0;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.3s ease;
+}
+
+.story-photos-grid img:hover {
+  opacity: 0.85;
+}
+
+/* Flex-fit grid: images keep their natural aspect ratios but fill the full width together */
+.story-photos-grid--fit img {
+  flex: none;
+  aspect-ratio: auto;
+  height: 240px;
+  width: auto;
+}
+
+/* Lightbox overlay */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  aspect-ratio: 3/4;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+.lightbox-caption {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 1rem;
+  text-align: center;
+  max-width: none;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 1101;
+  padding: 0.5rem;
+  line-height: 1;
+  transition: opacity 0.3s ease;
+}
+
+.lightbox-close:hover {
+  opacity: 0.7;
+}
+
+.lightbox-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2.5rem;
+  cursor: pointer;
+  z-index: 1101;
+  padding: 1rem;
+  line-height: 1;
+  transition: opacity 0.3s ease;
+}
+
+.lightbox-arrow:hover {
+  opacity: 0.7;
+}
+
+.lightbox-arrow--left {
+  left: 0.5rem;
+}
+
+.lightbox-arrow--right {
+  right: 0.5rem;
 }
 
 /* ---------- 10. Travel ---------- */
@@ -401,6 +587,137 @@ p {
   font-size: 0.88rem;
   color: var(--color-text-light);
   line-height: 1.6;
+}
+
+/* ---------- 11b. Things to Do — Area Sections ---------- */
+.area-section {
+  margin-bottom: 3rem;
+  text-align: left;
+}
+
+.area-section:last-child {
+  margin-bottom: 0;
+}
+
+.area-heading {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.area-note {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--color-text-light);
+  max-width: none;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.spot-card {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Container needs positioning so the fade overlay can layer on top */
+.spot-card-img {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+
+.spot-card-img img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+/* Hidden overlay image that fades in during photo rotation */
+.spot-card-img .fade-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  pointer-events: none;
+}
+
+.spot-card-img .fade-overlay.active {
+  opacity: 1;
+}
+
+.spot-card-info {
+  padding: 1.25rem;
+}
+
+.spot-card-name {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--color-heading);
+  margin-bottom: 0.2rem;
+}
+
+.spot-card-type {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-sage);
+  margin-bottom: 0.75rem;
+  max-width: none;
+}
+
+.spot-card-desc {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: var(--color-text-light);
+  line-height: 1.6;
+  max-width: none;
+  margin-bottom: 1rem;
+}
+
+/* Inline links within card descriptions */
+.spot-card-desc a {
+  color: var(--color-sage);
+  font-weight: 400;
+  text-decoration: underline;
+}
+
+.spot-card-desc a:hover {
+  color: var(--color-sage-hover);
+}
+
+.spot-card-map {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.spot-card-map iframe {
+  width: 100%;
+  height: 180px;
+  border: 0;
+  display: block;
 }
 
 /* ---------- 12. Photo Gallery ---------- */
@@ -1599,6 +1916,10 @@ p {
     grid-template-columns: 1fr 1fr;
   }
 
+  .area-grid {
+    grid-template-columns: 1fr;
+  }
+
   .photo-gallery {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1607,9 +1928,37 @@ p {
     gap: 2rem;
   }
 
-  /* Story */
-  .story-images-pair {
-    max-width: 100%;
+  /* Story photo strips: touch-scrollable on tablet/mobile */
+  .story-photos {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .story-photos-arrow {
+    display: none;
+  }
+
+  .story-photos-track {
+    transition: none;
+  }
+
+  /* Grids become swipeable strips on mobile too */
+  .story-photos-grid {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .story-photos-grid img {
+    flex: none;
+    width: auto;
+    height: 200px;
+    aspect-ratio: auto;
+  }
+
+  .story-photos-grid--fit img {
+    flex-grow: 0;
+    height: 200px;
   }
 
   /* Countdown */
@@ -1630,6 +1979,26 @@ p {
 
   .activities-grid {
     grid-template-columns: 1fr;
+  }
+
+  .spot-card-info {
+    padding: 1rem;
+  }
+
+  .spot-card-img {
+    height: 150px;
+  }
+
+  .spot-card-img img {
+    height: 150px;
+  }
+
+  .spot-card-img .fade-overlay {
+    height: 150px;
+  }
+
+  .spot-card-map iframe {
+    height: 150px;
   }
 
   .photo-gallery {
@@ -1665,7 +2034,19 @@ p {
     min-width: 50px;
   }
 
-  .story-images-pair {
-    grid-template-columns: 1fr;
+  /* Story photos smaller on mobile */
+  .story-photos-track img {
+    height: 180px;
+  }
+
+  /* Lightbox arrows tighter on mobile */
+  .lightbox-arrow {
+    font-size: 2rem;
+    padding: 0.5rem;
+  }
+
+  .lightbox-close {
+    top: 0.5rem;
+    right: 0.75rem;
   }
 }
