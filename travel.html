@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -39,11 +40,36 @@
       <h2 class="section-heading">Travel</h2>
       <div class="section-divider"></div>
 
+      <!-- Map filter buttons -->
+      <div class="map-filters">
+        <button class="map-filter-btn active" data-category="all">All</button>
+        <button class="map-filter-btn active" data-category="event">Wedding Events</button>
+        <button class="map-filter-btn active" data-category="hotel">Hotels</button>
+        <button class="map-filter-btn active" data-category="airport">Airports</button>
+      </div>
+
+      <!-- Interactive map -->
+      <div id="travel-map"></div>
+
       <div class="travel-cards">
         <div class="travel-card">
-          <h3>The Venue</h3>
-          <p class="travel-name">Fairview Laguna Seca</p>
-          <p>10520 York Road<br>Monterey, CA 93940</p>
+          <h3>Wedding events</h3>
+          <div class="travel-item">
+            <p class="travel-name">Fairview Laguna Seca</p>
+            <p>Ceremony <span class="ampersand">&amp;</span> Reception<br>10520 York Road, Monterey</p>
+          </div>
+          <div class="travel-item">
+            <p class="travel-name">The Fish Hopper</p>
+            <p>Rehearsal Dinner<br>700 Cannery Row, Monterey</p>
+          </div>
+          <div class="travel-item">
+            <p class="travel-name">Gianni's Pizza</p>
+            <p>Welcome Dinner<br>725 Lighthouse Ave, Monterey</p>
+          </div>
+          <div class="travel-item">
+            <p class="travel-name">Lover's Point Park</p>
+            <p>Park Day<br>631 Ocean View Blvd, Pacific Grove</p>
+          </div>
         </div>
 
         <div class="travel-card">
@@ -60,22 +86,68 @@
             <p class="travel-name">Monterey Plaza Hotel</p>
             <p>400 Cannery Row, Monterey</p>
           </div>
+          <div class="travel-item">
+            <p class="travel-name">InterContinental The Clement</p>
+            <p>750 Cannery Row, Monterey</p>
+          </div>
+          <div class="travel-item">
+            <p class="travel-name">Hyatt Regency Monterey</p>
+            <p>1 Old Golf Course Rd, Monterey</p>
+          </div>
+          <div class="travel-item">
+            <p class="travel-name">Old Monterey Inn</p>
+            <p>500 Martin St, Monterey</p>
+          </div>
         </div>
 
         <div class="travel-card">
-          <h3>Getting There</h3>
+          <h3>Getting there</h3>
           <div class="travel-item">
             <p class="travel-name">Monterey Regional (MRY)</p>
-            <p>15 minutes from venue</p>
+            <p>20 minutes from Monterey</p>
           </div>
           <div class="travel-item">
             <p class="travel-name">San Jose International (SJC)</p>
-            <p>1.5 hours from venue</p>
+            <p>1.5 hours from Monterey</p>
           </div>
           <div class="travel-item">
             <p class="travel-name">San Francisco International (SFO)</p>
-            <p>2 hours from venue</p>
+            <p>2 hours from Monterey</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section travel-faqs">
+      <h2 class="section-heading">FAQs</h2>
+      <div class="section-divider"></div>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <h3 class="faq-question">Which airport should I fly into?</h3>
+          <p class="faq-answer">Monterey Regional Airport (MRY) is the closest and most convenient option. It's just 20 minutes from downtown Monterey, which is where the bulk of the hotels are. If you're looking for more flight options or better fares, San Jose (SJC) and San Francisco (SFO) are about 1.5 and 2 hours away (without traffic), respectively.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3 class="faq-question">Do I need a rental car?</h3>
+          <p class="faq-answer">If you fly into SFO or SJC, you'll probably want one, since it's a bit of a trek down to Monterey. You could probably technically try to do rideshare down to Monterey, but it would be expensive. Caltrain runs through Gilroy, so you could also take the train down to Gilroy and then rideshare from there, but it would still be pretty pricey.</p>
+          <p class="faq-answer">We will have shuttles to take folks to and from the venue the day of the wedding, so if you fly into MRY and want to just do rideshare / public buses, you could get away without a car. Many guests are local to the area as well, so if you're in need of rides Jenna and Liam can connect with someone who could help you out!</p>
+        </div>
+
+        <div class="faq-item">
+          <h3 class="faq-question">Is there parking at the venue?</h3>
+          <p class="faq-answer">Yes! Fairview Laguna Seca has free parking on site.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3 class="faq-question">Is there a hotel room block?</h3>
+          <p class="faq-answer">We looked into doing a hotel room block, but honestly places didn't give us super great deals, so we skipped it. We recommend booking early, as July is peak season in Monterey and hotels fill up quickly.</p>
+          <p class="faq-answer">Airbnbs and VRBO can also be a good option, if you're traveling as a group. There are a lot of them since Monterey is such a popular tourist destination.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3 class="faq-question">What's the weather like in Monterey in July?</h3>
+          <p class="faq-answer">Monterey summers are still pretty mild. Expect daytime highs in the mid-60s to low 70s. Evenings can get chilly (upper 50s), especially near the water, so be sure to bring a jacket.</p>
         </div>
       </div>
     </section>
@@ -89,6 +161,8 @@
     <p class="footer-date">July 24, 2027 &middot; Monterey, California</p>
   </footer>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/travel-map.js"></script>
 </body>
 </html>
