@@ -47,6 +47,9 @@ function doGet(e) {
   if (action === 'getAttendees') {
     return getAttendees(e.parameter.excludeParty);
   }
+  if (action === 'getPhotos') {
+    return getPhotos();
+  }
 
   return jsonResponse({ error: 'Unknown action' });
 }
@@ -265,6 +268,43 @@ function getAttendees(excludeParty) {
   groom.sort(function (a, b) { return a.sortName < b.sortName ? -1 : (a.sortName > b.sortName ? 1 : 0); });
 
   return jsonResponse({ bride: bride, groom: groom });
+}
+
+/* ---------- GET: Get Guest Photos ---------- */
+
+function getPhotos() {
+  var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
+  var files = folder.getFiles();
+  var photos = [];
+
+  while (files.hasNext()) {
+    var file = files.next();
+    var mimeType = file.getMimeType();
+
+    // Only include image files
+    if (mimeType.indexOf('image/') === 0) {
+      // Make the file viewable by anyone with the link (if not already)
+      try {
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (e) {
+        // File might already be shared or we might not have permission
+      }
+
+      photos.push({
+        id: file.getId(),
+        name: file.getName(),
+        url: 'https://drive.google.com/uc?export=view&id=' + file.getId(),
+        dateCreated: file.getDateCreated().toISOString()
+      });
+    }
+  }
+
+  // Sort by date created (newest first)
+  photos.sort(function(a, b) {
+    return new Date(b.dateCreated) - new Date(a.dateCreated);
+  });
+
+  return jsonResponse({ photos: photos });
 }
 
 /* ---------- Utility ---------- */

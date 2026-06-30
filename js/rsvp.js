@@ -245,7 +245,7 @@
           '</select>';
       } else {
         selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
-          '<option value="yes"' + (m.attending === 'yes' ? ' selected' : '') + '>Attending wedding</option>' +
+          '<option value="yes"' + (m.attending === 'yes' ? ' selected' : '') + '>Attending</option>' +
           '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
           '</select>';
       }

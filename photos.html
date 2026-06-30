@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
 
@@ -39,16 +39,44 @@
       <h2 class="section-heading">Photos</h2>
       <div class="section-divider"></div>
 
-      <div class="photo-gallery">
-        <img src="images/6.JPG" alt="Jenna and Liam embracing on the beach" loading="lazy">
-        <img src="images/1.JPG" alt="Jenna and Liam close-up portrait" loading="lazy">
-        <img src="images/12.JPG" alt="Jenna and Liam walking hand in hand" loading="lazy">
-        <img src="images/2.JPG" alt="Jenna and Liam smiling together" loading="lazy">
-        <img src="images/8.JPG" alt="Jenna and Liam full-length embrace on beach" loading="lazy">
-        <img src="images/5.JPG" alt="Jenna reacting to the proposal" loading="lazy">
-        <img src="images/9.JPG" alt="Jenna and Liam kissing on the beach" loading="lazy">
-        <img src="images/11.JPG" alt="Hands clasped showing engagement ring" loading="lazy">
-        <img src="images/10.JPG" alt="Jenna and Liam walking with their dog" loading="lazy">
+      <!-- Engagement Photos -->
+      <div class="photos-section">
+        <h3 class="photos-section-title">Engagement</h3>
+        <div class="photo-carousel" id="engagement-carousel">
+          <button class="photo-carousel-arrow photo-carousel-arrow--left" aria-label="Previous">&lsaquo;</button>
+          <div class="photo-carousel-track-container">
+            <div class="photo-carousel-track">
+              <div class="photo-carousel-slide"><img src="images/6.JPG" alt="Jenna and Liam embracing on the beach" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/1.JPG" alt="Jenna and Liam close-up portrait" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/12.JPG" alt="Jenna and Liam walking hand in hand" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/2.JPG" alt="Jenna and Liam smiling together" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/8.JPG" alt="Jenna and Liam full-length embrace on beach" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/5.JPG" alt="Jenna reacting to the proposal" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/9.JPG" alt="Jenna and Liam kissing on the beach" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/11.JPG" alt="Hands clasped showing engagement ring" loading="lazy"></div>
+              <div class="photo-carousel-slide"><img src="images/10.JPG" alt="Jenna and Liam walking with their dog" loading="lazy"></div>
+            </div>
+          </div>
+          <button class="photo-carousel-arrow photo-carousel-arrow--right" aria-label="Next">&rsaquo;</button>
+          <div class="photo-carousel-dots"></div>
+        </div>
+      </div>
+
+      <!-- Guest Memories -->
+      <div class="photos-section">
+        <h3 class="photos-section-title">Memories</h3>
+        <p class="photos-section-intro">Photos shared by our guests</p>
+        <div class="photo-carousel" id="memories-carousel">
+          <button class="photo-carousel-arrow photo-carousel-arrow--left" aria-label="Previous">&lsaquo;</button>
+          <div class="photo-carousel-track-container">
+            <div class="photo-carousel-track" id="memories-track">
+              <!-- Guest photos will be loaded here dynamically -->
+            </div>
+          </div>
+          <button class="photo-carousel-arrow photo-carousel-arrow--right" aria-label="Next">&rsaquo;</button>
+          <div class="photo-carousel-dots" id="memories-dots"></div>
+        </div>
+        <p class="photos-empty-message" id="memories-empty">No photos yet. Be the first to share a memory when you RSVP!</p>
       </div>
     </section>
   </main>
@@ -62,5 +90,6 @@
   </footer>
 
   <script src="js/main.js"></script>
+  <script src="js/photos.js"></script>
 </body>
 </html>

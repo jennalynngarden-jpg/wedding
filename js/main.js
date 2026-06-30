@@ -41,26 +41,63 @@ function initCountdown() {
   setInterval(update, 60000);
 }
 
-/* ---------- Mobile Nav Toggle ---------- */
+/* ---------- Nav Sidebar Toggle ---------- */
 function initMobileNav() {
   var toggle = document.getElementById('nav-toggle');
   var links = document.getElementById('nav-links');
   if (!toggle || !links) return;
 
+  // Create overlay for closing sidebar by clicking outside
+  var overlay = document.createElement('div');
+  overlay.className = 'nav-overlay';
+  document.body.appendChild(overlay);
+
+  function openNav() {
+    links.classList.add('active');
+    toggle.classList.add('active');
+    overlay.classList.add('active');
+    document.body.classList.add('nav-open');
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeNav() {
+    links.classList.remove('active');
+    toggle.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.classList.remove('nav-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
   toggle.addEventListener('click', function () {
-    var isActive = links.classList.toggle('active');
-    toggle.classList.toggle('active');
-    toggle.setAttribute('aria-expanded', isActive);
+    if (links.classList.contains('active')) {
+      closeNav();
+    } else {
+      openNav();
+    }
   });
 
+  // Close when clicking overlay
+  overlay.addEventListener('click', closeNav);
+
+  // Close when clicking a nav link
   var navAnchors = links.querySelectorAll('a');
   for (var i = 0; i < navAnchors.length; i++) {
-    navAnchors[i].addEventListener('click', function () {
-      links.classList.remove('active');
-      toggle.classList.remove('active');
-      toggle.setAttribute('aria-expanded', 'false');
-    });
+    navAnchors[i].addEventListener('click', closeNav);
   }
+
+  // Close on Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && links.classList.contains('active')) {
+      closeNav();
+    }
+  });
+
+  // Close sidebar when resizing to desktop (above 1200px breakpoint)
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 1200 && links.classList.contains('active')) {
+      closeNav();
+    }
+  });
 }
 
 /* ---------- Carousel ---------- */

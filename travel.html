@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body>
 
@@ -42,14 +42,35 @@
 
       <!-- Map filter buttons -->
       <div class="map-filters">
-        <button class="map-filter-btn active" data-category="all">All</button>
-        <button class="map-filter-btn active" data-category="event">Wedding Events</button>
+        <button class="map-filter-btn active" data-category="event">Wedding events</button>
         <button class="map-filter-btn active" data-category="hotel">Hotels</button>
         <button class="map-filter-btn active" data-category="airport">Airports</button>
+        <button class="map-filter-btn" data-category="guest">Our guests</button>
       </div>
 
-      <!-- Interactive map -->
-      <div id="travel-map"></div>
+      <!-- Interactive map with pin overlay -->
+      <div class="map-container">
+        <div id="travel-map"></div>
+
+        <!-- Pin overlay UI -->
+        <div id="pin-overlay" class="pin-overlay">
+          <button id="add-pin-btn" class="add-pin-btn">+ Add your pin</button>
+          <div id="pin-form" class="pin-form">
+            <p class="pin-form-header">Show us where you're traveling from!</p>
+            <input type="text" id="pin-name" placeholder="Your name" maxlength="50">
+            <div class="pin-form-buttons">
+              <button id="pin-cancel" class="pin-cancel-btn">Cancel</button>
+              <button id="pin-confirm" class="pin-confirm-btn">Place your pin</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toast notification for undo -->
+        <div id="pin-toast" class="pin-toast">
+          <span class="pin-toast-message">Pin added!</span>
+          <button id="pin-undo" class="pin-undo-btn">Undo</button>
+        </div>
+      </div>
 
       <div class="travel-cards">
         <div class="travel-card">

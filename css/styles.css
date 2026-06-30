@@ -244,10 +244,10 @@ p {
   cursor: pointer;
   padding: 0.5rem;
   position: absolute;
-  left: 1rem;
+  left: 0.25rem;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 10;
+  z-index: 210;
 }
 
 .nav-toggle span {
@@ -646,7 +646,7 @@ p {
 /* Style the map popups to match the site */
 .leaflet-popup-content-wrapper {
   font-family: var(--font-sans);
-  border-radius: 2px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
@@ -719,6 +719,287 @@ p {
 .map-marker {
   background: none;
   border: none;
+}
+
+/* ---------- 10c. Guest Pin Feature ---------- */
+
+/* Map container for positioning the overlay */
+.map-container {
+  position: relative;
+}
+
+/* Pin overlay positioned on top-right of map */
+.pin-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+/* Add your pin button */
+.add-pin-btn {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.add-pin-btn:hover {
+  border-color: var(--color-sage);
+  color: var(--color-sage);
+  background: white;
+}
+
+/* Pin form (name input and buttons) */
+.pin-form {
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+}
+
+.pin-form.active {
+  display: flex;
+}
+
+.pin-form-header {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  text-align: center;
+  margin: 0 0 0.75rem 0;
+  max-width: none;
+}
+
+.pin-form input[type="text"] {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.pin-form input[type="text"]:focus {
+  border-color: var(--color-sage);
+}
+
+.pin-form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.pin-confirm-btn {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.6rem;
+  background: var(--color-heading);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pin-confirm-btn:hover {
+  background: var(--color-sage);
+}
+
+.pin-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pin-cancel-btn {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.6rem;
+  background: none;
+  color: var(--color-text-light);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pin-cancel-btn:hover {
+  border-color: var(--color-sage);
+  color: var(--color-sage);
+}
+
+/* Custom cursor when placing a pin */
+.leaflet-container.pin-placing {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='36' viewBox='0 0 24 36'%3E%3Cpath d='M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z' fill='%23d4a5a5' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='4' fill='%23fff'/%3E%3C/svg%3E") 12 36, crosshair;
+}
+
+/* Toast notification */
+.pin-toast {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--color-heading);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.pin-toast.active {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.pin-toast-message {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.pin-undo-btn {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.75rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pin-undo-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Guest marker popup styling */
+.leaflet-popup-content .guest-popup {
+  text-align: center;
+  min-width: 140px;
+  margin: 0;
+}
+
+.leaflet-popup-content .guest-popup strong {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.2rem;
+}
+
+.leaflet-popup-content .guest-popup .guest-tagline {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-text-light);
+  margin-bottom: 0.75rem;
+}
+
+.leaflet-popup-content .guest-remove-btn {
+  display: block;
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-light);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.leaflet-popup-content .guest-remove-btn:hover {
+  border-color: #c44;
+  color: #c44;
+}
+
+/* Placing mode indicator */
+.pin-placing-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--color-text);
+  z-index: 1001;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.pin-placing-hint.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .pin-overlay {
+    top: 8px;
+    right: 8px;
+  }
+
+  .add-pin-btn {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .pin-form {
+    min-width: 180px;
+    padding: 0.75rem;
+  }
+
+  .pin-toast {
+    bottom: 10px;
+    padding: 0.6rem 1rem;
+  }
 }
 
 /* ---------- 11. Things to Do ---------- */
@@ -898,6 +1179,134 @@ p {
   opacity: 0.9;
 }
 
+/* ---------- 12b. Photo Page Carousels ---------- */
+.photos-section {
+  margin-bottom: 3rem;
+}
+
+.photos-section:last-child {
+  margin-bottom: 0;
+}
+
+.photos-section-title {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.5rem;
+}
+
+.photos-section-intro {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  margin-bottom: 1.5rem;
+}
+
+.photo-carousel {
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.photo-carousel-track-container {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.photo-carousel-track {
+  display: flex;
+  transition: transform 0.4s ease;
+}
+
+.photo-carousel-slide {
+  min-width: 100%;
+  flex-shrink: 0;
+}
+
+.photo-carousel-slide img {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: cover;
+  display: block;
+  max-height: 500px;
+}
+
+.photo-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--color-border);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.photo-carousel-arrow:hover {
+  background: #ffffff;
+  border-color: var(--color-sage);
+  color: var(--color-sage);
+}
+
+.photo-carousel-arrow--left {
+  left: -22px;
+}
+
+.photo-carousel-arrow--right {
+  right: -22px;
+}
+
+.photo-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.photo-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.photo-carousel-dot.active {
+  background: var(--color-sage);
+}
+
+.photos-empty-message {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  font-style: italic;
+  margin-top: 1rem;
+}
+
+/* Hide carousel controls when empty */
+#memories-carousel .photo-carousel-arrow,
+#memories-carousel .photo-carousel-dots {
+  display: none;
+}
+
+#memories-carousel.has-photos .photo-carousel-arrow,
+#memories-carousel.has-photos .photo-carousel-dots {
+  display: flex;
+}
+
+#memories-carousel.has-photos + .photos-empty-message {
+  display: none;
+}
+
 /* ---------- 13. Wedding Party ---------- */
 .party-columns {
   display: grid;
@@ -1028,8 +1437,8 @@ p {
 
 .carousel-arrow {
   position: absolute;
-  top: 50%;
-  transform: translateY(-70%);
+  top: 110px;  /* Center of 220px portrait */
+  transform: translateY(-50%);
   background: none;
   border: 1px solid var(--color-border);
   width: 42px;
@@ -1104,21 +1513,15 @@ p {
   background: var(--color-sage);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .carousel-pair {
-    grid-template-columns: 1fr;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x mandatory;
     display: flex;
-    gap: 1.5rem;
-    padding-bottom: 0.5rem;
+    flex-direction: column;
+    gap: 2.5rem;
   }
 
   .carousel-column {
-    min-width: 85vw;
-    scroll-snap-align: start;
-    flex-shrink: 0;
+    width: 100%;
   }
 }
 
@@ -1133,13 +1536,10 @@ p {
   }
 
   .carousel-arrow {
+    top: 75px;  /* Center of 150px portrait */
     width: 30px;
     height: 30px;
     font-size: 1.1rem;
-  }
-
-  .carousel-column {
-    min-width: 90vw;
   }
 }
 
@@ -1258,7 +1658,8 @@ p {
 .registry-btn {
   display: inline-block;
   padding: 0.9rem 2.2rem;
-  border: 1px solid var(--color-heading);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 400;
@@ -1269,8 +1670,9 @@ p {
 }
 
 .registry-btn:hover {
-  background: var(--color-heading);
-  color: white;
+  background: var(--color-sage-light);
+  border-color: var(--color-sage);
+  color: var(--color-sage-hover);
 }
 
 /* ---------- 15. RSVP Form ---------- */
@@ -1367,18 +1769,20 @@ p {
   background: var(--color-heading);
   color: white;
   border: none;
+  border-radius: 6px;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
   margin-top: 0.5rem;
 }
 
 .submit-btn:hover {
-  background: var(--color-sage-hover);
+  background: var(--color-sage);
+  transform: translateY(-1px);
 }
 
 /* ---------- 15b. Welcome Section (Home) ---------- */
@@ -1405,19 +1809,22 @@ p {
 .rsvp-cta {
   display: inline-block;
   padding: 1rem 3rem;
+  background: var(--color-heading);
   border: 1px solid var(--color-heading);
+  border-radius: 6px;
   font-family: var(--font-sans);
   font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--color-heading);
+  color: #ffffff;
   transition: all 0.3s ease;
 }
 
 .rsvp-cta:hover {
-  background: var(--color-heading);
-  color: white;
+  background: var(--color-sage);
+  border-color: var(--color-sage);
+  color: #ffffff;
 }
 
 /* ---------- 15b. RSVP Multi-Step ---------- */
@@ -1457,6 +1864,40 @@ p {
   color: var(--color-text-light);
   font-size: 0.9rem;
   margin-bottom: 2rem;
+}
+
+/* Pin promo on confirmation */
+.pin-promo {
+  text-align: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--color-sage-light);
+  border-radius: 8px;
+}
+
+.pin-promo-text {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  margin-bottom: 1rem;
+  max-width: none;
+}
+
+.pin-promo-btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-heading);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ffffff;
+  transition: background 0.3s ease;
+}
+
+.pin-promo-btn:hover {
+  background: var(--color-sage);
 }
 
 /* Progress dots */
@@ -1701,7 +2142,7 @@ p {
 
 .step-btn {
   padding: 0.85rem 2rem;
-  border-radius: 4px;
+  border-radius: 6px;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 400;
@@ -1719,7 +2160,7 @@ p {
 }
 
 .step-btn--back:hover {
-  color: var(--color-text);
+  color: var(--color-sage);
 }
 
 .step-btn--skip {
@@ -1729,8 +2170,9 @@ p {
 }
 
 .step-btn--skip:hover {
-  border-color: var(--color-text-light);
-  color: var(--color-text);
+  background: var(--color-sage-light);
+  border-color: var(--color-sage);
+  color: var(--color-sage-hover);
 }
 
 .step-btn--next,
@@ -1742,7 +2184,8 @@ p {
 
 .step-btn--next:hover,
 .step-btn--submit:hover {
-  background: var(--color-sage-hover);
+  background: var(--color-sage);
+  transform: translateY(-1px);
 }
 
 .step-btn:disabled {
@@ -1770,9 +2213,10 @@ p {
   padding: 2.5rem 2rem 2rem;
   max-width: 400px;
   width: 90%;
-  text-align: left;
+  text-align: center;
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .modal-heading {
@@ -1793,7 +2237,6 @@ p {
 }
 
 .modal-btn {
-  align-self: flex-end;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   font-weight: 400;
@@ -1803,13 +2246,13 @@ p {
   color: white;
   border: none;
   padding: 0.85rem 2rem;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .modal-btn:hover {
-  background: var(--color-sage-hover);
+  background: var(--color-sage);
 }
 
 /* Photo upload */
@@ -2027,8 +2470,8 @@ p {
   margin-top: 0.25rem;
 }
 
-/* ---------- 17. Responsive: Tablet ---------- */
-@media (max-width: 768px) {
+/* ---------- 17. Responsive: Sidebar Nav (≤1024px) ---------- */
+@media (max-width: 1200px) {
   :root {
     --section-padding: 3.5rem 1.25rem;
   }
@@ -2046,33 +2489,92 @@ p {
     display: block;
   }
 
+  /* Sidebar nav (replaces horizontal nav at smaller screen sizes) */
   .nav-links {
-    display: none;
-    flex-direction: column;
-    position: absolute;
-    top: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    position: fixed;
+    top: 0;
     left: 0;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--color-border);
-    padding: 1rem 0;
+    width: 260px;
+    height: 100vh;
+    min-height: 100vh;
+    background: #ffffff !important;
+    border-right: 1px solid var(--color-border);
+    padding: 3.5rem 0 2rem;
     gap: 0;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s;
+    z-index: 200;
+    overflow-y: auto;
+    overflow-x: visible;
+    visibility: hidden;
   }
 
   .nav-links.active {
-    display: flex;
+    transform: translateX(0);
+    visibility: visible;
   }
 
   .nav-links li {
-    text-align: center;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    text-align: left;
+    width: 100%;
+    height: auto !important;
+    min-height: 40px;
+    overflow: visible !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
   }
 
   .nav-links a {
-    display: block;
-    padding: 0.75rem 1.5rem;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding: 0.9rem 2rem;
     font-size: 0.72rem;
+    color: var(--color-text);
+  }
+
+  /* Overlay when sidebar is open - positioned to the RIGHT of the sidebar */
+  .nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 260px;  /* Start after the sidebar width */
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 140;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s;
+  }
+
+  .nav-overlay.active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* When sidebar is open */
+  body.nav-open {
+    overflow: hidden;
+  }
+
+  /* Position the X button at the same spot as the hamburger */
+  .nav-toggle.active {
+    position: fixed;
+    left: 0.25rem;
+    top: calc(var(--nav-height) / 2);
+    transform: translateY(-50%);
+  }
+
+  .nav-brand {
+    transition: transform 0.3s ease;
   }
 
   /* Grids */
@@ -2187,6 +2689,21 @@ p {
 
   .photo-gallery img {
     aspect-ratio: 4/3;
+  }
+
+  /* Photo carousels on mobile */
+  .photo-carousel-arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+  }
+
+  .photo-carousel-arrow--left {
+    left: 0.5rem;
+  }
+
+  .photo-carousel-arrow--right {
+    right: 0.5rem;
   }
 
   .party-columns {

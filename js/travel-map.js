@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var mapEl = document.getElementById('travel-map');
   if (!mapEl) return; // only run on the travel page
 
+  /* ---------- Configuration ---------- */
+  // Replace this URL with your deployed Google Apps Script URL for guest pins
+  var GUEST_PINS_URL = 'https://script.google.com/macros/s/AKfycbwcPHnrg7AyTR5IzPS68qymBvdGhGmjhLH5Ya6qERwNAXL9fleY4Y-0EVhw5b1mKF2cbg/exec';
+
   /* ---------- Location data ----------
      Each entry has a name, category, coordinates, address, and drive time
      to the venue. Edit these if any info changes. */
@@ -121,13 +125,15 @@ document.addEventListener('DOMContentLoaded', function () {
   var markerColors = {
     hotel:   '#7a9a6d', // sage green
     airport: '#b8a88a', // warm gold
-    event:   '#2c3e2d'  // dark green
+    event:   '#2c3e2d', // dark green
+    guest:   '#d4a5a5'  // coral/pink for guest pins
   };
 
   var markerSizes = {
     hotel:   12,
     airport: 12,
-    event:   12
+    event:   12,
+    guest:   12
   };
 
   /* Create a small circle marker icon */
@@ -160,6 +166,46 @@ document.addEventListener('DOMContentLoaded', function () {
     return html;
   }
 
+  /* Build popup content for guest pins */
+  function guestPopupContent(name, city, pinId) {
+    var tagline = city ? 'Traveling from ' + city : 'Traveling from here!';
+    return '<div class="guest-popup">' +
+           '<strong>' + name + '</strong>' +
+           '<span class="guest-tagline">' + tagline + '</span>' +
+           '<button class="guest-remove-btn" data-pin-id="' + pinId + '">Remove pin</button>' +
+           '</div>';
+  }
+
+  /* Look up city name from coordinates using OpenStreetMap's Nominatim */
+  function getCityFromCoords(lat, lng, callback) {
+    var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&zoom=10';
+
+    fetch(url, {
+      headers: { 'Accept-Language': 'en' }
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        console.log('Nominatim response:', data);
+        var city = '';
+        if (data.address) {
+          // Try to get the most relevant location name
+          city = data.address.city ||
+                 data.address.town ||
+                 data.address.village ||
+                 data.address.municipality ||
+                 data.address.county ||
+                 data.address.state ||
+                 '';
+          console.log('Found city:', city);
+        }
+        callback(city);
+      })
+      .catch(function (err) {
+        console.error('Geocoding error:', err);
+        callback('');
+      });
+  }
+
   /* ---------- Set up the map ---------- */
   var map = L.map('travel-map', {
     scrollWheelZoom: false // don't hijack page scrolling
@@ -176,7 +222,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var layerGroups = {
     hotel:   L.layerGroup().addTo(map),
     airport: L.layerGroup().addTo(map),
-    event:   L.layerGroup().addTo(map)
+    event:   L.layerGroup().addTo(map),
+    guest:   L.layerGroup() // NOT added by default
   };
 
   // Add each location as a marker in its category's layer group
@@ -188,22 +235,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Filter buttons ---------- */
   var filterBtns = document.querySelectorAll('.map-filter-btn');
-  var activeCategories = { hotel: true, airport: true, event: true };
+  var activeCategories = { hotel: true, airport: true, event: true, guest: false };
 
   filterBtns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       var category = btn.getAttribute('data-category');
 
-      if (category === 'all') {
-        // If any category is off, turn them all on; otherwise turn all off
-        var allOn = activeCategories.hotel && activeCategories.airport && activeCategories.event;
-        var newState = !allOn;
-        activeCategories.venue = newState;
-        activeCategories.hotel = newState;
-        activeCategories.airport = newState;
+      if (category === 'guest') {
+        // "Our guests" is exclusive - turn off all others when selected
+        var guestWasOn = activeCategories.guest;
+        activeCategories.guest = !guestWasOn;
+        if (!guestWasOn) {
+          // Turning guest on, turn others off
+          activeCategories.hotel = false;
+          activeCategories.airport = false;
+          activeCategories.event = false;
+        }
       } else {
-        // Toggle this individual category
+        // Clicking event/hotel/airport turns off guest
         activeCategories[category] = !activeCategories[category];
+        if (activeCategories[category]) {
+          activeCategories.guest = false;
+        }
       }
 
       // Update layers and button styles
@@ -222,14 +275,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Update button active states
-    var allOn = activeCategories.venue && activeCategories.hotel && activeCategories.airport;
     filterBtns.forEach(function (btn) {
       var cat = btn.getAttribute('data-category');
-      if (cat === 'all') {
-        btn.classList.toggle('active', allOn);
-      } else {
-        btn.classList.toggle('active', activeCategories[cat]);
-      }
+      btn.classList.toggle('active', activeCategories[cat]);
     });
 
     // Fit the map to show all visible markers
@@ -256,4 +304,340 @@ document.addEventListener('DOMContentLoaded', function () {
   window.addEventListener('resize', function () {
     map.invalidateSize();
   });
+
+  // Enable scroll zoom when hovering over the map, disable when leaving
+  mapEl.addEventListener('mouseenter', function () {
+    map.scrollWheelZoom.enable();
+  });
+
+  mapEl.addEventListener('mouseleave', function () {
+    map.scrollWheelZoom.disable();
+  });
+
+  /* ========================================
+     Guest Pin Feature
+     ======================================== */
+
+  console.log('Guest pin feature loading...');
+
+  // Get UI elements
+  var addPinBtn = document.getElementById('add-pin-btn');
+  console.log('Add pin button found:', addPinBtn);
+  var pinForm = document.getElementById('pin-form');
+  var pinNameInput = document.getElementById('pin-name');
+  var pinConfirmBtn = document.getElementById('pin-confirm');
+  var pinCancelBtn = document.getElementById('pin-cancel');
+  var pinToast = document.getElementById('pin-toast');
+  var pinUndoBtn = document.getElementById('pin-undo');
+
+  // State for pin placement
+  var isPlacingPin = false;
+  var pendingPinName = '';
+  var lastAddedPin = null;
+  var undoTimeout = null;
+
+  // Track guest markers by pinId for easy removal
+  var guestMarkers = {};
+
+  /* ---------- Load existing guest pins ---------- */
+  function loadGuestPins() {
+    // Skip if URL not configured
+    if (GUEST_PINS_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+      console.log('Guest pins: Configure GUEST_PINS_URL to enable this feature');
+      return;
+    }
+
+    fetch(GUEST_PINS_URL + '?action=getPins')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.pins && data.pins.length > 0) {
+          data.pins.forEach(function (pin) {
+            // If pin doesn't have a city, look it up
+            if (!pin.city) {
+              getCityFromCoords(pin.lat, pin.lng, function (city) {
+                addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, city);
+              });
+            } else {
+              addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, pin.city);
+            }
+          });
+        }
+      })
+      .catch(function (err) {
+        console.error('Failed to load guest pins:', err);
+      });
+  }
+
+  /* ---------- Add a guest marker to the map ---------- */
+  function addGuestMarker(name, lat, lng, pinId, city) {
+    var marker = L.marker([lat, lng], { icon: createIcon('guest') });
+    marker.bindPopup(guestPopupContent(name, city, pinId), { offset: [0, -6] });
+    marker.pinId = pinId;
+    marker.city = city;
+    marker.guestName = name;
+    layerGroups.guest.addLayer(marker);
+    guestMarkers[pinId] = marker;
+
+    // Handle remove button click when popup opens
+    marker.on('popupopen', function () {
+      var removeBtn = document.querySelector('.guest-remove-btn[data-pin-id="' + pinId + '"]');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function () {
+          removeGuestPin(pinId);
+        });
+      }
+    });
+
+    return marker;
+  }
+
+  /* ---------- Remove a guest pin ---------- */
+  function removeGuestPin(pinId) {
+    var marker = guestMarkers[pinId];
+    if (marker) {
+      map.closePopup();
+      layerGroups.guest.removeLayer(marker);
+      delete guestMarkers[pinId];
+
+      // Delete from backend
+      deletePin(pinId, function (err) {
+        if (err) {
+          console.error('Failed to delete pin:', err);
+        }
+      });
+    }
+  }
+
+  /* ---------- Save pin to backend ---------- */
+  function savePin(name, lat, lng, city, callback) {
+    if (GUEST_PINS_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+      // If not configured, simulate success for testing
+      var fakePinId = 'local_' + Date.now();
+      callback(null, fakePinId);
+      return;
+    }
+
+    // Use GET with query params to avoid CORS issues with Google Apps Script
+    var url = GUEST_PINS_URL + '?action=addPin' +
+      '&name=' + encodeURIComponent(name) +
+      '&lat=' + encodeURIComponent(lat) +
+      '&lng=' + encodeURIComponent(lng) +
+      '&city=' + encodeURIComponent(city || '');
+
+    fetch(url)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          callback(null, data.pinId);
+        } else {
+          callback(data.error || 'Unknown error');
+        }
+      })
+      .catch(function (err) {
+        callback(err.message || 'Network error');
+      });
+  }
+
+  /* ---------- Remove pin from backend ---------- */
+  function deletePin(pinId, callback) {
+    if (GUEST_PINS_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
+      callback(null);
+      return;
+    }
+
+    // Use GET with query params to avoid CORS issues with Google Apps Script
+    var url = GUEST_PINS_URL + '?action=removePin&pinId=' + encodeURIComponent(pinId);
+
+    fetch(url)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        callback(data.error || null);
+      })
+      .catch(function (err) {
+        callback(err.message || 'Network error');
+      });
+  }
+
+  /* ---------- Pin placement workflow ---------- */
+
+  // Step 1: User clicks "Add your pin" button
+  if (addPinBtn) {
+    addPinBtn.addEventListener('click', function () {
+      addPinBtn.style.display = 'none';
+      pinForm.classList.add('active');
+      pinNameInput.value = '';
+      pinNameInput.focus();
+    });
+  }
+
+  // Cancel button
+  if (pinCancelBtn) {
+    pinCancelBtn.addEventListener('click', function () {
+      cancelPinPlacement();
+    });
+  }
+
+  // Step 2: User enters name and clicks "Place on map"
+  if (pinConfirmBtn) {
+    pinConfirmBtn.addEventListener('click', function () {
+      var name = pinNameInput.value.trim();
+      if (!name) {
+        pinNameInput.focus();
+        return;
+      }
+
+      pendingPinName = name;
+      pinForm.classList.remove('active');
+      enterPlacingMode();
+    });
+  }
+
+  // Allow pressing Enter in the name input
+  if (pinNameInput) {
+    pinNameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        pinConfirmBtn.click();
+      }
+      if (e.key === 'Escape') {
+        cancelPinPlacement();
+      }
+    });
+  }
+
+  function enterPlacingMode() {
+    isPlacingPin = true;
+    mapEl.classList.add('pin-placing');
+
+    // Make sure guest layer is visible so user can see their pin
+    if (!activeCategories.guest) {
+      activeCategories.guest = true;
+      activeCategories.hotel = false;
+      activeCategories.airport = false;
+      activeCategories.event = false;
+      updateMap();
+    }
+  }
+
+  function exitPlacingMode() {
+    isPlacingPin = false;
+    mapEl.classList.remove('pin-placing');
+    addPinBtn.style.display = 'block';
+  }
+
+  function cancelPinPlacement() {
+    pinForm.classList.remove('active');
+    exitPlacingMode();
+    pendingPinName = '';
+  }
+
+  // Step 3: User clicks on the map to place the pin
+  map.on('click', function (e) {
+    if (!isPlacingPin || !pendingPinName) return;
+
+    var lat = e.latlng.lat;
+    var lng = e.latlng.lng;
+    var name = pendingPinName;
+
+    exitPlacingMode();
+    pendingPinName = '';
+
+    // Look up the city name, then add marker and save
+    getCityFromCoords(lat, lng, function (city) {
+      // Save to backend first to get the real pinId
+      savePin(name, lat, lng, city, function (err, pinId) {
+        if (err) {
+          alert('Could not save your pin. Please try again.');
+          return;
+        }
+
+        // Add the marker with the real pinId
+        var marker = addGuestMarker(name, lat, lng, pinId, city);
+
+        // Store for undo
+        lastAddedPin = { pinId: pinId, marker: marker };
+
+        // Show toast with undo option
+        showToast();
+      });
+    });
+  });
+
+  // Allow pressing Escape to cancel placing mode
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && isPlacingPin) {
+      cancelPinPlacement();
+    }
+  });
+
+  /* ---------- Toast / Undo ---------- */
+  function showToast() {
+    if (pinToast) {
+      pinToast.classList.add('active');
+
+      // Clear any existing timeout
+      if (undoTimeout) {
+        clearTimeout(undoTimeout);
+      }
+
+      // Hide toast after 5 seconds
+      undoTimeout = setTimeout(function () {
+        hideToast();
+      }, 5000);
+    }
+  }
+
+  function hideToast() {
+    if (pinToast) {
+      pinToast.classList.remove('active');
+    }
+    lastAddedPin = null;
+  }
+
+  // Undo button
+  if (pinUndoBtn) {
+    pinUndoBtn.addEventListener('click', function () {
+      if (!lastAddedPin) return;
+
+      var pinId = lastAddedPin.pinId;
+      var marker = lastAddedPin.marker;
+
+      // Remove from map immediately
+      if (marker) {
+        layerGroups.guest.removeLayer(marker);
+        delete guestMarkers[pinId];
+      }
+
+      // Delete from backend
+      deletePin(pinId, function (err) {
+        if (err) {
+          console.error('Failed to delete pin from backend:', err);
+        }
+      });
+
+      hideToast();
+      if (undoTimeout) {
+        clearTimeout(undoTimeout);
+      }
+    });
+  }
+
+  /* ---------- Initialize ---------- */
+  loadGuestPins();
+
+  // Auto-open pin form if URL has ?addpin=true (linked from RSVP confirmation)
+  var urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('addpin') === 'true' && addPinBtn && pinForm) {
+    // Scroll to map area
+    var mapContainer = document.querySelector('.map-container');
+    if (mapContainer) {
+      mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Open the form after a short delay to let the page settle
+    setTimeout(function() {
+      addPinBtn.style.display = 'none';
+      pinForm.classList.add('active');
+      pinNameInput.focus();
+    }, 500);
+  }
 });
