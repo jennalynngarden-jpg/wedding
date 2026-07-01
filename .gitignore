@@ -1,0 +1,3 @@
+# macOS system files (invisible clutter that Finder creates automatically)
+.DS_Store
+**/.DS_Store
