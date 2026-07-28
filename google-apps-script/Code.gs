@@ -293,7 +293,8 @@ function getPhotos() {
       photos.push({
         id: file.getId(),
         name: file.getName(),
-        url: 'https://drive.google.com/uc?export=view&id=' + file.getId(),
+        // "thumbnail" format loads reliably in <img>; "uc?export=view" often does not.
+        url: 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1600',
         dateCreated: file.getDateCreated().toISOString()
       });
     }

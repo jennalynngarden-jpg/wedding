@@ -148,6 +148,31 @@ function setupCarousel(carousel) {
   rightArrow.addEventListener('click', function () {
     goToSlide(currentIndex + 1);
   });
+
+  // Touch swipe support (mobile) — swipe left/right to change slides.
+  // We compare horizontal vs. vertical movement so up/down still scrolls the
+  // page normally; only a mostly-horizontal swipe flips the slide.
+  var touchStartX = 0, touchStartY = 0, touchActive = false;
+  var swipeArea = carousel.querySelector('.carousel-track-container') || carousel;
+
+  swipeArea.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchActive = true;
+  }, { passive: true });
+
+  swipeArea.addEventListener('touchend', function (e) {
+    if (!touchActive) return;
+    touchActive = false;
+    var dx = e.changedTouches[0].clientX - touchStartX;
+    var dy = e.changedTouches[0].clientY - touchStartY;
+    // 40px threshold, and horizontal must dominate vertical
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goToSlide(currentIndex + 1);
+      else goToSlide(currentIndex - 1);
+    }
+  }, { passive: true });
 }
 
 /* ---------- Story Photo Strips ---------- */

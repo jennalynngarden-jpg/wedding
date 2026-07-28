@@ -329,6 +329,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var pinCancelBtn = document.getElementById('pin-cancel');
   var pinToast = document.getElementById('pin-toast');
   var pinUndoBtn = document.getElementById('pin-undo');
+  var pinPlacingHint = document.getElementById('pin-placing-hint');
+  var pinPlacingCancelBtn = document.getElementById('pin-placing-cancel');
 
   // State for pin placement
   var isPlacingPin = false;
@@ -470,9 +472,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Cancel button
+  // Cancel button (in the name form)
   if (pinCancelBtn) {
     pinCancelBtn.addEventListener('click', function () {
+      cancelPinPlacement();
+    });
+  }
+
+  // Cancel button (shown while placing on the map)
+  if (pinPlacingCancelBtn) {
+    pinPlacingCancelBtn.addEventListener('click', function () {
       cancelPinPlacement();
     });
   }
@@ -503,11 +512,25 @@ document.addEventListener('DOMContentLoaded', function () {
         cancelPinPlacement();
       }
     });
+
+    // When the field is focused on mobile, the keyboard slides up and can
+    // cover the form. Scroll the form into view so the input and its buttons
+    // stay visible above the keyboard. (Delay lets the keyboard start opening.)
+    pinNameInput.addEventListener('focus', function () {
+      setTimeout(function () {
+        if (pinForm.scrollIntoView) {
+          pinForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    });
   }
 
   function enterPlacingMode() {
     isPlacingPin = true;
     mapEl.classList.add('pin-placing');
+
+    // Show the on-screen instruction (the only cue on touch devices)
+    if (pinPlacingHint) pinPlacingHint.classList.add('active');
 
     // Make sure guest layer is visible so user can see their pin
     if (!activeCategories.guest) {
@@ -522,6 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function exitPlacingMode() {
     isPlacingPin = false;
     mapEl.classList.remove('pin-placing');
+    if (pinPlacingHint) pinPlacingHint.classList.remove('active');
     addPinBtn.style.display = 'block';
   }
 
@@ -580,10 +604,10 @@ document.addEventListener('DOMContentLoaded', function () {
         clearTimeout(undoTimeout);
       }
 
-      // Hide toast after 5 seconds
+      // Hide toast after 8 seconds (gives time to find & tap Undo on mobile)
       undoTimeout = setTimeout(function () {
         hideToast();
-      }, 5000);
+      }, 8000);
     }
   }
 

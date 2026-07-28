@@ -81,10 +81,20 @@
     }
     state.currentStep = stepId;
     updateProgressDots(stepId);
+    // Show the welcome intro only on the first step; hide it once in the form.
+    setIntroVisible(stepId === '1');
     document.getElementById('rsvp-form-container').scrollIntoView({
       behavior: 'smooth',
       block: 'start'
     });
+  }
+
+  // Show/hide both intro paragraphs at the top of the RSVP page.
+  function setIntroVisible(visible) {
+    var intros = document.querySelectorAll('.content-section .section-intro');
+    for (var i = 0; i < intros.length; i++) {
+      intros[i].style.display = visible ? '' : 'none';
+    }
   }
 
   function updateProgressDots(stepId) {
@@ -113,8 +123,7 @@
     el.style.display = '';
     el.classList.add('active');
     document.getElementById('rsvp-progress').style.display = 'none';
-    var intro = document.getElementById('rsvp-intro');
-    if (intro) intro.style.display = 'none';
+    setIntroVisible(false);
   }
 
   /* ---------- Step 1: Guest Search ---------- */
@@ -137,9 +146,21 @@
     });
   }
 
+  // Floral line-art loader: a single sage line that draws itself and loops,
+  // echoing the continuous line-art florals on our invitations.
+  var FLORAL_LOADER_HTML =
+    '<div class="floral-loader" role="status" aria-live="polite">' +
+      '<svg viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<path pathLength="1" d="M10,25 Q30,25 32,25 C30,12 44,12 42,24 Q42,25 52,25 ' +
+        'C52,38 66,38 64,26 Q64,25 74,25 C74,12 88,12 86,24 Q86,25 96,25 ' +
+        'C96,36 106,34 104,26 Q104,25 110,25"/>' +
+      '</svg>' +
+      '<p class="search-loading">Finding your invitation&hellip;</p>' +
+    '</div>';
+
   function fetchGuests(query) {
     var resultsEl = document.getElementById('search-results');
-    resultsEl.innerHTML = '<p class="search-loading">Searching...</p>';
+    resultsEl.innerHTML = FLORAL_LOADER_HTML;
 
     var url = APPS_SCRIPT_URL + '?action=searchGuests&query=' + encodeURIComponent(query);
     fetch(url)

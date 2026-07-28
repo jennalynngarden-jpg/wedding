@@ -102,6 +102,17 @@ p {
   color: var(--color-text-light);
 }
 
+/* When two intro paragraphs stack, keep them close as one block */
+.section-intro:has(+ .section-intro) {
+  margin-bottom: 0.6rem;
+}
+
+/* Emphasized text in intros (e.g. the RSVP date) — bold on all screen sizes */
+.section-intro strong {
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
 /* ---------- 5. Header / Crest ---------- */
 .site-header {
   text-align: center;
@@ -887,6 +898,7 @@ p {
 .pin-toast-message {
   font-family: var(--font-sans);
   font-size: 0.85rem;
+  white-space: nowrap;   /* keep "Pin added!" on one line */
 }
 
 .pin-undo-btn {
@@ -902,6 +914,8 @@ p {
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .pin-undo-btn:hover {
@@ -954,29 +968,59 @@ p {
   color: #c44;
 }
 
-/* Placing mode indicator */
+/* Placing mode indicator — a pill at the top of the map that tells the user
+   to tap to drop their pin (the only cue on touch devices) and lets them cancel. */
 .pin-placing-hint {
   position: absolute;
-  top: 50%;
+  top: 12px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateX(-50%) translateY(-8px);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--color-heading);
+  color: white;
+  padding: 0.55rem 0.6rem 0.55rem 1rem;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
-  color: var(--color-text);
+  font-size: 0.85rem;
+  max-width: calc(100% - 24px);
   z-index: 1001;
-  pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
 }
 
 .pin-placing-hint.active {
   opacity: 1;
   visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.pin-placing-hint-text {
+  white-space: nowrap;
+}
+
+.pin-placing-cancel-btn {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+
+.pin-placing-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Responsive adjustments */
@@ -986,19 +1030,37 @@ p {
     right: 8px;
   }
 
+  /* Bigger, thumb-friendly tap targets for the pin flow on mobile */
   .add-pin-btn {
-    font-size: 0.7rem;
-    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    padding: 0.65rem 1rem;
   }
 
   .pin-form {
-    min-width: 180px;
-    padding: 0.75rem;
+    min-width: 200px;
+    padding: 0.85rem;
+  }
+
+  .pin-form input[type="text"] {
+    /* 16px prevents iOS from zooming in when the field is focused */
+    font-size: 16px;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .pin-confirm-btn,
+  .pin-cancel-btn {
+    font-size: 0.75rem;
+    padding: 0.7rem 1rem;
   }
 
   .pin-toast {
     bottom: 10px;
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1rem;
+  }
+
+  .pin-undo-btn {
+    font-size: 0.78rem;
+    padding: 0.55rem 1rem;
   }
 }
 
@@ -1209,26 +1271,44 @@ p {
 }
 
 .photo-carousel-track-container {
-  overflow: hidden;
+  /* "clip" hides the neighbouring slides, but the clip-margin lets each photo's
+     soft shadow spill out a little instead of being cut off at the edge. */
+  overflow: clip;
+  overflow-clip-margin: 50px;
   border-radius: 8px;
+  /* Height is set by JS to match the current photo, so the frame hugs each
+     photo (spacing stays consistent; the frame height jumps between photos) */
+  transition: height 0.4s ease;
 }
 
 .photo-carousel-track {
   display: flex;
+  /* Anchor photos to the top so spacing under the heading stays consistent */
+  align-items: flex-start;
   transition: transform 0.4s ease;
 }
 
 .photo-carousel-slide {
-  min-width: 100%;
-  flex-shrink: 0;
+  /* Lock each slide to exactly the frame width (grow 0, shrink 0, basis 100%).
+     Without this, a very wide photo stretches the slide and gets clipped. */
+  flex: 0 0 100%;
+  max-width: 100%;
+  /* Center the photo horizontally */
+  text-align: center;
 }
 
 .photo-carousel-slide img {
-  width: 100%;
-  aspect-ratio: 4/5;
-  object-fit: cover;
-  display: block;
-  max-height: 500px;
+  /* Let each photo keep its natural shape; just cap its size so nothing crops. */
+  max-width: 100%;
+  max-height: 600px;
+  width: auto;
+  height: auto;
+  display: inline-block;
+  vertical-align: middle;
+  /* Round each photo's own corners so portrait photos match the landscape ones */
+  border-radius: 8px;
+  /* Super soft, diffuse drop shadow so photos gently float off the page */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .photo-carousel-arrow {
@@ -1240,7 +1320,8 @@ p {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  font-size: 1.5rem;
+  /* Hide the text character (< or >); we draw a centered chevron instead */
+  font-size: 0;
   color: var(--color-text);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1248,6 +1329,27 @@ p {
   align-items: center;
   justify-content: center;
   z-index: 10;
+}
+
+/* Draw the caret as a small rotated square with two borders. A drawn shape is
+   symmetric, so flexbox centers it perfectly (unlike the < > text glyphs). */
+.photo-carousel-arrow::before {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.photo-carousel-arrow--left::before {
+  transform: rotate(135deg);
+  margin-left: 3px; /* optical centering: shift the left-pointing chevron right */
+}
+
+.photo-carousel-arrow--right::before {
+  transform: rotate(-45deg);
+  margin-right: 3px; /* optical centering: shift the right-pointing chevron left */
 }
 
 .photo-carousel-arrow:hover {
@@ -1283,6 +1385,16 @@ p {
 
 .photo-carousel-dot.active {
   background: var(--color-sage);
+}
+
+/* Hide the whole Memories section until guest photos have been added.
+   The script reveals it (adds .has-photos) once photos load. */
+#memories-section {
+  display: none;
+}
+
+#memories-section.has-photos {
+  display: block;
 }
 
 .photos-empty-message {
@@ -1539,7 +1651,8 @@ p {
     top: 75px;  /* Center of 150px portrait */
     width: 30px;
     height: 30px;
-    font-size: 1.1rem;
+    /* Keep font-size: 0 (from base) so the raw < > text stays hidden and only
+       the centered drawn chevron shows — otherwise the glyph looks off-center. */
   }
 }
 
@@ -1721,6 +1834,7 @@ p {
 
 .form-group textarea {
   border: 1px solid var(--color-border);
+  border-radius: 10px;
   padding: 0.75rem;
   resize: vertical;
   margin-top: 0.25rem;
@@ -1961,7 +2075,48 @@ p {
   color: var(--color-text-light);
   font-style: italic;
   text-align: center;
-  padding: 1rem 0;
+  padding: 0.25rem 0 0;
+}
+
+/* Floral line-art loader — a single sage line that draws itself and loops,
+   echoing the continuous line-art florals on the invitations. */
+.floral-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 0 0.75rem;
+}
+
+.floral-loader svg {
+  width: 120px;
+  height: auto;
+  display: block;
+}
+
+.floral-loader path {
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  animation: floral-draw 2.4s ease-in-out infinite;
+}
+
+@keyframes floral-draw {
+  0%   { stroke-dashoffset: 1; }   /* undrawn */
+  45%  { stroke-dashoffset: 0; }   /* fully drawn */
+  65%  { stroke-dashoffset: 0; }   /* hold */
+  100% { stroke-dashoffset: -1; }  /* erase off the far end, then loop */
+}
+
+/* Respect users who prefer less motion: show the line drawn, no animation */
+@media (prefers-reduced-motion: reduce) {
+  .floral-loader path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Party member rows */
@@ -2258,6 +2413,7 @@ p {
 /* Photo upload */
 .upload-dropzone {
   border: 2px dashed var(--color-border);
+  border-radius: 10px;
   padding: 3rem 2rem;
   text-align: center;
   cursor: pointer;
@@ -2334,6 +2490,9 @@ p {
   /* Make form container fill the screen with a bit of breathing room */
   .rsvp-form-container {
     max-width: 100%;
+    /* Size to content on mobile — the fixed 300px min-height left a big
+       empty gap on short steps and pushed the footer partly off-screen. */
+    min-height: 0;
   }
 
   /* Slightly smaller step headings on mobile */
@@ -2391,20 +2550,34 @@ p {
     text-align: center;
   }
 
-  /* Larger touch targets for attendance dropdowns */
-  .attendance-select {
-    padding: 0.75rem 0.85rem;
-    font-size: 0.78rem;
+  /* On mobile, stack each dropdown full-width under the guest's name so it's
+     big and easy to tap (side-by-side made them cramped and tiny). */
+  #party-members .party-member-row:first-child {
+    display: none;  /* hide the "Attendance" column header — not needed stacked */
   }
 
-  /* Make party member rows comfortable for tapping */
   .party-member-row {
-    padding: 0.85rem 0;
+    flex-direction: column;
+    align-items: stretch;
     gap: 0.5rem;
+    padding: 1rem 0;
   }
 
   .party-member-name {
+    font-size: 1.05rem;
+  }
+
+  .attendance-select {
+    width: 100%;
+    padding: 0.85rem 0.9rem;
+    /* 1rem = 16px: more legible AND stops iOS from zooming in on tap */
     font-size: 1rem;
+    min-height: 48px;
+  }
+
+  /* Plus-one name input matches the full-width dropdown */
+  .plusone-name-input {
+    width: 100%;
   }
 
   /* Meal options: a bit more padding for touch */
@@ -2489,7 +2662,8 @@ p {
     display: block;
   }
 
-  /* Sidebar nav (replaces horizontal nav at smaller screen sizes) */
+  /* Mobile menu: a sheet that slides down from under the header bar.
+     Big, full-width tap rows; the page dims below it. */
   .nav-links {
     display: flex !important;
     flex-direction: column !important;
@@ -2497,59 +2671,63 @@ p {
     justify-content: flex-start !important;
     flex-wrap: nowrap !important;
     position: fixed;
-    top: 0;
+    top: var(--nav-height);        /* sit just under the header */
     left: 0;
-    width: 260px;
-    height: 100vh;
-    min-height: 100vh;
-    background: #ffffff !important;
-    border-right: 1px solid var(--color-border);
-    padding: 3.5rem 0 2rem;
-    gap: 0;
-    transform: translateX(-100%);
-    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s;
-    z-index: 200;
+    right: 0;
+    max-height: calc(100vh - var(--nav-height));
     overflow-y: auto;
-    overflow-x: visible;
+    background: #ffffff !important;
+    border-bottom: 1px solid var(--color-border);
+    /* Softly rounded bottom corners — a nicer mobile-sheet look */
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    padding: 0.25rem 0 0.75rem;
+    gap: 0;
+    /* Closed: tucked up behind the header. Open: slides down into view. */
+    transform: translateY(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s;
     visibility: hidden;
+    z-index: 95;                   /* below the header (100) so it tucks behind */
   }
 
   .nav-links.active {
-    transform: translateX(0);
+    transform: translateY(0);
     visibility: visible;
   }
 
   .nav-links li {
     display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    text-align: left;
     width: 100%;
-    height: auto !important;
-    min-height: 40px;
-    overflow: visible !important;
+    /* Hairline divider between rows for a clean list feel */
+    border-bottom: 1px solid var(--color-border);
     flex-shrink: 0 !important;
     flex-grow: 0 !important;
   }
 
+  .nav-links li:last-child {
+    border-bottom: none;
+  }
+
   .nav-links a {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    padding: 0.9rem 2rem;
-    font-size: 0.72rem;
+    display: flex !important;
+    align-items: center;
+    min-height: 56px;              /* large, thumb-friendly tap target */
+    padding: 0 1.75rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
     color: var(--color-text);
   }
 
-  /* Overlay when sidebar is open - positioned to the RIGHT of the sidebar */
+  /* Dim the page below the open sheet; tap it to close */
   .nav-overlay {
     position: fixed;
-    top: 0;
-    left: 260px;  /* Start after the sidebar width */
+    top: var(--nav-height);
+    left: 0;
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.3);
-    z-index: 140;
+    z-index: 90;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s;
@@ -2560,7 +2738,7 @@ p {
     visibility: visible;
   }
 
-  /* When sidebar is open */
+  /* When the menu is open */
   body.nav-open {
     overflow: hidden;
   }
@@ -2601,16 +2779,25 @@ p {
 
   /* Story photo strips: touch-scrollable on tablet/mobile */
   .story-photos {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
   }
 
   .story-photos-arrow {
     display: none;
   }
 
+  /* The inner wrapper is what clips photos on desktop, so make IT the
+     touch-scrollable area on mobile (the outer box has nothing to scroll). */
+  .story-photos-track-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .story-photos-track {
     transition: none;
+    /* Clear any left/right offset the desktop arrows may have set, so the
+       swipe strip always starts at the first photo. */
+    transform: none !important;
   }
 
   /* Grids become swipeable strips on mobile too */
@@ -2692,10 +2879,16 @@ p {
   }
 
   /* Photo carousels on mobile */
+  .photo-carousel-slide img {
+    /* Cap height smaller on phones; shape still preserved */
+    max-height: 380px;
+  }
+
   .photo-carousel-arrow {
     width: 36px;
     height: 36px;
-    font-size: 1.2rem;
+    /* Keep font-size: 0 (from base) so the raw < > text stays hidden and only
+       the centered drawn chevron shows — otherwise you get a double caret. */
   }
 
   .photo-carousel-arrow--left {
