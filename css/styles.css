@@ -264,7 +264,9 @@ p {
 .nav-toggle span {
   display: block;
   width: 20px;
-  height: 1.5px;
+  /* Whole-pixel height so all three lines render at the same thickness
+     (1.5px was rounding unevenly, making the middle line look thicker). */
+  height: 2px;
   background: var(--color-text);
   margin: 5px 0;
   transition: all 0.3s ease;
@@ -470,6 +472,8 @@ p {
   max-width: 90vw;
   max-height: 80vh;
   object-fit: contain;
+  /* Match the rounded corners of the carousel photos */
+  border-radius: 8px;
 }
 
 .lightbox-caption {
@@ -652,6 +656,28 @@ p {
 
 .map-filter-btn:hover {
   border-color: var(--color-sage);
+}
+
+/* On phones, let the filter chips scroll sideways in one row instead of
+   wrapping onto a second line above the map. */
+@media (max-width: 600px) {
+  .map-filters {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Hide the scrollbar for a clean look */
+    scrollbar-width: none;
+  }
+
+  .map-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .map-filter-btn {
+    flex: 0 0 auto;      /* keep each chip full size; don't shrink or wrap */
+    white-space: nowrap;
+  }
 }
 
 /* Style the map popups to match the site */
@@ -901,6 +927,26 @@ p {
   white-space: nowrap;   /* keep "Pin added!" on one line */
 }
 
+/* On phones, the "Pin added!" toast slides up from the bottom of the SCREEN
+   (iOS style) rather than sitting inside the map. Higher-specificity selector
+   so it wins over the general responsive rules regardless of order. */
+@media (max-width: 700px) {
+  .map-container .pin-toast {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(160%);   /* start below the screen */
+    justify-content: space-between;
+    border-radius: 12px;
+    z-index: 2000;
+  }
+
+  .map-container .pin-toast.active {
+    transform: translateY(0);      /* slide up into view */
+  }
+}
+
 .pin-undo-btn {
   font-family: var(--font-sans);
   font-size: 0.72rem;
@@ -1021,6 +1067,147 @@ p {
 
 .pin-placing-cancel-btn:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Confirm bar shown once a preview pin is dropped (bottom-center, thumb-reachable) */
+.pin-confirm-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--color-heading);
+  color: #fff;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  max-width: calc(100% - 24px);
+  z-index: 1001;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+}
+
+.pin-confirm-bar.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.pin-confirm-text {
+  white-space: nowrap;
+}
+
+.pin-confirm-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.pin-confirm-cancel-btn,
+.pin-confirm-ok-btn {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.pin-confirm-cancel-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.pin-confirm-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.pin-confirm-ok-btn {
+  background: #fff;
+  color: var(--color-heading);
+  border: 1px solid #fff;
+}
+
+.pin-confirm-ok-btn:hover {
+  background: var(--color-sage-light);
+}
+
+.pin-confirm-ok-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Full-screen map (used on phones while placing a pin) */
+.map-container.map-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  margin: 0;
+  background: #fff;
+}
+
+.map-container.map-fullscreen #travel-map {
+  height: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+body.map-fullscreen-open {
+  overflow: hidden;
+}
+
+/* Fixed center pin (center-pin placement pattern). Its tip sits on the map
+   center; the guest pans the map underneath it, then confirms. */
+.map-center-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);  /* pin tip rests on the map center */
+  pointer-events: none;               /* let drags pass through to the map */
+  z-index: 1000;
+  display: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+
+.map-container.is-placing .map-center-pin {
+  display: block;
+  animation: center-pin-drop 0.3s ease;
+}
+
+.map-center-pin svg {
+  display: block;
+}
+
+.map-center-pin path {
+  fill: var(--color-heading);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.map-center-pin circle {
+  fill: #fff;
+}
+
+@keyframes center-pin-drop {
+  0%   { transform: translate(-50%, -140%); }
+  100% { transform: translate(-50%, -100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-container.is-placing .map-center-pin {
+    animation: none;
+  }
 }
 
 /* Responsive adjustments */
@@ -1250,6 +1437,12 @@ p {
   margin-bottom: 0;
 }
 
+/* When the Memories section is hidden (no guest photos yet), drop the extra
+   gap under the Engagement carousel so it doesn't float above the footer. */
+.photos-section:has(+ #memories-section:not(.has-photos)) {
+  margin-bottom: 0;
+}
+
 .photos-section-title {
   font-family: var(--font-serif);
   font-size: 1.3rem;
@@ -1309,6 +1502,8 @@ p {
   border-radius: 8px;
   /* Super soft, diffuse drop shadow so photos gently float off the page */
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  /* Tappable — opens the full-screen viewer */
+  cursor: pointer;
 }
 
 .photo-carousel-arrow {
@@ -1674,7 +1869,9 @@ p {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
+  /* Start the line at the center of the first dot (dot: top 0.35rem, height 12px)
+     so it doesn't poke up above the first timeline item. */
+  top: calc(0.35rem + 6px);
   bottom: 0;
   width: 2px;
   background: var(--color-border);
@@ -1786,6 +1983,318 @@ p {
   background: var(--color-sage-light);
   border-color: var(--color-sage);
   color: var(--color-sage-hover);
+}
+
+/* ---------- Registry: Honeymoon Fund ---------- */
+.honeymoon-card {
+  max-width: 520px;
+  margin: 0 auto 3rem;
+  padding: 2.25rem 2rem;
+  background: var(--color-sage-light);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.honeymoon-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.75rem;
+}
+
+.honeymoon-desc {
+  font-size: 0.95rem;
+  color: var(--color-text);
+  margin: 0 auto 1.5rem;
+  max-width: 380px;
+}
+
+.honeymoon-btn {
+  display: inline-block;
+  padding: 0.85rem 2rem;
+  background: var(--color-heading);
+  color: #fff;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: background 0.3s ease;
+}
+
+.honeymoon-btn:hover {
+  background: var(--color-sage);
+}
+
+.honeymoon-handle {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  margin-top: 0.75rem;
+}
+
+/* ---------- Registry: Item Grid ---------- */
+.registry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1.75rem;
+  margin-top: 1rem;
+}
+
+.registry-status {
+  text-align: center;
+  color: var(--color-text-light);
+  font-style: italic;
+  padding: 2rem 0;
+}
+
+.registry-item {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.registry-item:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.registry-item-imgwrap {
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f4f2ee;
+}
+
+.registry-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.registry-item-imgwrap:hover .registry-item-img {
+  transform: scale(1.04);
+}
+
+/* Placeholder when no product image could be pulled */
+.registry-item-imgwrap--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-sage-light);
+}
+
+.registry-item-noimg {
+  width: 48px;
+  height: auto;
+  opacity: 0.6;
+}
+
+.registry-item-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.1rem 1.1rem 1.25rem;
+  text-align: left;
+}
+
+.registry-item-name {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.25rem;
+}
+
+.registry-item-price {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--color-sage-hover);
+  margin-bottom: 0.5rem;
+}
+
+.registry-item-desc {
+  font-size: 0.88rem;
+  font-weight: 300;
+  color: var(--color-text-light);
+  line-height: 1.6;
+  margin-bottom: 1.1rem;
+  /* Push the actions to the bottom so cards line up neatly */
+  flex: 1;
+}
+
+.registry-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.registry-view-btn {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-heading);
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.registry-view-btn:hover {
+  border-color: var(--color-sage);
+  color: var(--color-sage-hover);
+}
+
+.registry-mark-btn {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-heading);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.25s ease;
+  white-space: nowrap;
+}
+
+.registry-mark-btn:hover {
+  background: var(--color-sage);
+}
+
+.registry-reserved-badge {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-sage-light);
+  color: var(--color-sage-hover);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Softly fade a reserved item's image so it reads as "taken" */
+.registry-item.is-reserved .registry-item-imgwrap {
+  opacity: 0.6;
+}
+
+/* ---------- Registry: Purchase Modal ---------- */
+.registry-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1.5rem;
+}
+
+.registry-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem 1.75rem 1.75rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: left;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.registry-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--color-text-light);
+  cursor: pointer;
+}
+
+.registry-modal-title {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.35rem;
+}
+
+.registry-modal-item {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-sage-hover);
+  margin-bottom: 0.5rem;
+}
+
+.registry-modal-help {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  margin-bottom: 1.25rem;
+}
+
+.optional-label {
+  color: var(--color-text-light);
+  font-weight: 300;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.registry-modal-error {
+  color: #c0392b;
+  font-size: 0.85rem;
+  min-height: 1.1em;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.registry-confirm-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.9rem;
+  background: var(--color-heading);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.registry-confirm-btn:hover {
+  background: var(--color-sage);
+}
+
+.registry-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ---------- 15. RSVP Form ---------- */
@@ -2078,8 +2587,9 @@ p {
   padding: 0.25rem 0 0;
 }
 
-/* Floral line-art loader — a single sage line that draws itself and loops,
-   echoing the continuous line-art florals on the invitations. */
+/* Floral line-art loader — a 5-petal flower that draws itself petal by petal
+   (echoing the continuous line-art florals on the invitations), then stays
+   drawn with a gentle breathing pulse. */
 .floral-loader {
   display: flex;
   flex-direction: column;
@@ -2089,31 +2599,44 @@ p {
 }
 
 .floral-loader svg {
-  width: 120px;
+  width: 84px;
   height: auto;
   display: block;
 }
 
-.floral-loader path {
+/* Every stroked part of the flower continuously draws, holds, erases, and
+   re-draws. A per-element delay makes the petals cascade in sequence. */
+.floral-loader g > * {
   fill: none;
   stroke: var(--color-sage);
-  stroke-width: 1.5;
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 1;
-  animation: floral-draw 2.4s ease-in-out infinite;
+  stroke-dashoffset: 1;
+  animation: floral-draw 3.2s ease-in-out infinite;
 }
+
+/* Stagger: stem, leaf, then petals one by one, then the center */
+.floral-loader g > *:nth-child(1) { animation-delay: 0s; }
+.floral-loader g > *:nth-child(2) { animation-delay: 0.08s; }
+.floral-loader g > *:nth-child(3) { animation-delay: 0.16s; }
+.floral-loader g > *:nth-child(4) { animation-delay: 0.24s; }
+.floral-loader g > *:nth-child(5) { animation-delay: 0.32s; }
+.floral-loader g > *:nth-child(6) { animation-delay: 0.40s; }
+.floral-loader g > *:nth-child(7) { animation-delay: 0.48s; }
+.floral-loader g > *:nth-child(8) { animation-delay: 0.56s; }
 
 @keyframes floral-draw {
-  0%   { stroke-dashoffset: 1; }   /* undrawn */
-  45%  { stroke-dashoffset: 0; }   /* fully drawn */
-  65%  { stroke-dashoffset: 0; }   /* hold */
-  100% { stroke-dashoffset: -1; }  /* erase off the far end, then loop */
+  0%   { stroke-dashoffset: 1; }   /* hidden */
+  25%  { stroke-dashoffset: 0; }   /* drawn */
+  75%  { stroke-dashoffset: 0; }   /* hold */
+  100% { stroke-dashoffset: 1; }   /* erase, then loop re-draws */
 }
 
-/* Respect users who prefer less motion: show the line drawn, no animation */
+/* Respect users who prefer less motion: show the flower drawn, no animation */
 @media (prefers-reduced-motion: reduce) {
-  .floral-loader path {
+  .floral-loader g > * {
     animation: none;
     stroke-dashoffset: 0;
   }
@@ -2137,13 +2660,14 @@ p {
 
 .attendance-select {
   font-family: var(--font-sans);
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
   color: var(--color-heading);
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  min-width: 180px;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -2644,11 +3168,9 @@ p {
 }
 
 /* ---------- 17. Responsive: Sidebar Nav (≤1024px) ---------- */
-@media (max-width: 1200px) {
-  :root {
-    --section-padding: 3.5rem 1.25rem;
-  }
-
+/* Mobile navigation switches on below ~900px so the full horizontal menu
+   stays visible on typical laptop and tablet windows. */
+@media (max-width: 900px) {
   /* Nav */
   .nav-inner {
     justify-content: center;
@@ -2753,6 +3275,24 @@ p {
 
   .nav-brand {
     transition: transform 0.3s ease;
+  }
+}
+
+/* Tighten horizontal nav spacing at mid widths so all 9 items fit comfortably
+   before the compact menu takes over at 900px. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .nav-links {
+    gap: 1.1rem;
+  }
+
+  .nav-links a {
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --section-padding: 3.5rem 1.25rem;
   }
 
   /* Grids */

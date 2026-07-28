@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css?v=23">
+  <link rel="stylesheet" href="css/styles.css?v=36">
 </head>
 <body>
 
@@ -52,6 +52,14 @@
       <div class="map-container">
         <div id="travel-map"></div>
 
+        <!-- Fixed center pin shown while placing (guest pans the map under it) -->
+        <div id="map-center-pin" class="map-center-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 36" width="30" height="45">
+            <path d="M12 0 C5 0 0 5 0 12 C0 21 12 36 12 36 C12 36 24 21 24 12 C24 5 19 0 12 0 Z"/>
+            <circle cx="12" cy="12" r="4"/>
+          </svg>
+        </div>
+
         <!-- Pin overlay UI -->
         <div id="pin-overlay" class="pin-overlay">
           <button id="add-pin-btn" class="add-pin-btn">+ Add your pin</button>
@@ -67,8 +75,17 @@
 
         <!-- Instruction shown while placing a pin (esp. important on touch) -->
         <div id="pin-placing-hint" class="pin-placing-hint">
-          <span class="pin-placing-hint-text">Tap the map to drop your pin</span>
+          <span class="pin-placing-hint-text">Tap the map to place your pin</span>
           <button id="pin-placing-cancel" class="pin-placing-cancel-btn">Cancel</button>
+        </div>
+
+        <!-- Confirm bar shown while placing (center-pin pattern) -->
+        <div id="pin-confirm-bar" class="pin-confirm-bar">
+          <span class="pin-confirm-text">Move the map to position your pin</span>
+          <div class="pin-confirm-actions">
+            <button id="pin-confirm-cancel" class="pin-confirm-cancel-btn">Cancel</button>
+            <button id="pin-confirm-ok" class="pin-confirm-ok-btn">Confirm pin</button>
+          </div>
         </div>
 
         <!-- Toast notification for undo -->
@@ -189,7 +206,7 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/main.js?v=2"></script>
-  <script src="js/travel-map.js?v=3"></script>
+  <script src="js/main.js?v=4"></script>
+  <script src="js/travel-map.js?v=5"></script>
 </body>
 </html>

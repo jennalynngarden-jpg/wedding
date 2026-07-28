@@ -33,6 +33,17 @@ var GUEST_SHEET = 'GuestList';
 var RESPONSE_SHEET = 'Responses';
 var PHOTO_FOLDER_ID = '17E0PNTgr66PecYd1_YTK4s1q2ZTy-EyM';
 
+/* Registry sheets:
+   - REGISTRY_SHEET "Registry" columns (row 1 = headers):
+       A id | B name | C description | D link | E image | F price | G reserved
+     You fill A–F. Leave E (image) blank to auto-pull the product photo; put a
+     URL there to override. G (reserved) is managed automatically.
+   - PURCHASES_SHEET "RegistryPurchases" columns:
+       A timestamp | B itemId | C itemName | D buyerName | E buyerEmail | F note
+     This is written automatically — it's your thank-you-note list. */
+var REGISTRY_SHEET = 'Registry';
+var PURCHASES_SHEET = 'RegistryPurchases';
+
 /* ---------- Web App Entry Points ---------- */
 
 function doGet(e) {
@@ -50,6 +61,9 @@ function doGet(e) {
   if (action === 'getPhotos') {
     return getPhotos();
   }
+  if (action === 'getRegistry') {
+    return getRegistry();
+  }
 
   return jsonResponse({ error: 'Unknown action' });
 }
@@ -63,6 +77,9 @@ function doPost(e) {
   }
   if (action === 'uploadPhoto') {
     return uploadPhoto(data);
+  }
+  if (action === 'markPurchased') {
+    return markPurchased(data);
   }
 
   return jsonResponse({ error: 'Unknown action' });
@@ -306,6 +323,113 @@ function getPhotos() {
   });
 
   return jsonResponse({ photos: photos });
+}
+
+/* ---------- GET: Registry Items ---------- */
+
+function getRegistry() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(REGISTRY_SHEET);
+  if (!sheet) return jsonResponse({ items: [] });
+
+  var data = sheet.getDataRange().getValues();
+  var items = [];
+
+  // Row 0 = headers. Columns: A id, B name, C description, D link, E image,
+  // F price, G reserved
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var id = row[0];
+    var name = row[1];
+    if (!id && !name) continue;  // skip blank rows
+
+    var image = String(row[4] || '').trim();
+    // If no image is set yet, try to pull one from the product page and cache
+    // it back into the sheet so we only fetch it once.
+    if (!image && row[3]) {
+      image = fetchOgImage(String(row[3]));
+      if (image) {
+        sheet.getRange(i + 1, 5).setValue(image);  // column E
+      }
+    }
+
+    items.push({
+      id: String(id),
+      name: String(name),
+      description: String(row[2] || ''),
+      link: String(row[3] || ''),
+      image: image,
+      price: String(row[5] || ''),
+      reserved: row[6] === true || String(row[6]).toLowerCase() === 'yes' ||
+                String(row[6]).toLowerCase() === 'true'
+    });
+  }
+
+  return jsonResponse({ items: items });
+}
+
+// Fetch a product page and pull its Open Graph preview image (og:image).
+function fetchOgImage(url) {
+  try {
+    var res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      followRedirects: true,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WeddingRegistryBot/1.0)' }
+    });
+    var html = res.getContentText();
+    var m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    return m ? m[1] : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+/* ---------- POST: Mark Registry Item Purchased ---------- */
+
+function markPurchased(data) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(REGISTRY_SHEET);
+  if (!sheet) return jsonResponse({ success: false, error: 'No registry sheet' });
+
+  var rows = sheet.getDataRange().getValues();
+  var itemName = '';
+  var found = false;
+
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(data.itemId)) {
+      // Guard against a double-purchase race: reject if already reserved
+      var already = rows[i][6] === true ||
+                    String(rows[i][6]).toLowerCase() === 'yes' ||
+                    String(rows[i][6]).toLowerCase() === 'true';
+      if (already) {
+        return jsonResponse({ success: false, error: 'already-reserved' });
+      }
+      itemName = String(rows[i][1]);
+      sheet.getRange(i + 1, 7).setValue('yes');  // column G = reserved
+      found = true;
+      break;
+    }
+  }
+
+  if (!found) return jsonResponse({ success: false, error: 'item-not-found' });
+
+  // Record the purchase for thank-you notes
+  var purchases = ss.getSheetByName(PURCHASES_SHEET);
+  if (!purchases) {
+    purchases = ss.insertSheet(PURCHASES_SHEET);
+    purchases.appendRow(['Timestamp', 'Item ID', 'Item', 'Name', 'Email', 'Note']);
+  }
+  purchases.appendRow([
+    new Date(),
+    String(data.itemId),
+    itemName,
+    String(data.buyerName || ''),
+    String(data.buyerEmail || ''),
+    String(data.note || '')
+  ]);
+
+  return jsonResponse({ success: true });
 }
 
 /* ---------- Utility ---------- */

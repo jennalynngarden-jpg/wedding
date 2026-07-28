@@ -98,6 +98,28 @@ function initMobileNav() {
       closeNav();
     }
   });
+
+  // Swipe up on the menu sheet to dismiss it (the sheet slides up to hide,
+  // so an upward swipe is the natural gesture). Vertical swipe, past a small
+  // threshold, and mostly vertical so it doesn't fire on stray movement.
+  var navTouchStartY = 0, navTouchStartX = 0, navTouchActive = false;
+
+  links.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    navTouchStartY = e.touches[0].clientY;
+    navTouchStartX = e.touches[0].clientX;
+    navTouchActive = true;
+  }, { passive: true });
+
+  links.addEventListener('touchend', function (e) {
+    if (!navTouchActive) return;
+    navTouchActive = false;
+    var dy = e.changedTouches[0].clientY - navTouchStartY;
+    var dx = e.changedTouches[0].clientX - navTouchStartX;
+    if (dy < -50 && Math.abs(dy) > Math.abs(dx)) {
+      closeNav();
+    }
+  }, { passive: true });
 }
 
 /* ---------- Carousel ---------- */
@@ -345,23 +367,25 @@ function initLightbox() {
     show();
   }
 
-  // Click on any story photo (carousel or grid) to open lightbox
-  var allStoryPhotos = document.querySelectorAll('.story-photos-track img, .story-photos-grid img');
-  for (var i = 0; i < allStoryPhotos.length; i++) {
-    (function (photo) {
-      photo.addEventListener('click', function () {
-        // Get all images in the same section (carousel strip or grid)
-        var container = photo.closest('.story-photos') || photo.closest('.story-photos-grid');
-        if (!container) return;
-        var groupImages = container.querySelectorAll('img');
-        var index = 0;
-        for (var j = 0; j < groupImages.length; j++) {
-          if (groupImages[j] === photo) { index = j; break; }
-        }
-        open(groupImages, index);
-      });
-    })(allStoryPhotos[i]);
-  }
+  // Open the lightbox when any eligible photo is clicked. Uses event
+  // delegation so photos added later (e.g. guest "Memories") work too.
+  document.addEventListener('click', function (e) {
+    var photo = e.target.closest(
+      '.story-photos-track img, .story-photos-grid img, .photo-carousel-slide img'
+    );
+    if (!photo) return;
+    // Group the photos in the same strip / grid / carousel so prev/next works
+    var container = photo.closest('.story-photos') ||
+                    photo.closest('.story-photos-grid') ||
+                    photo.closest('.photo-carousel');
+    if (!container) return;
+    var groupImages = container.querySelectorAll('img');
+    var index = 0;
+    for (var j = 0; j < groupImages.length; j++) {
+      if (groupImages[j] === photo) { index = j; break; }
+    }
+    open(groupImages, index);
+  });
 
   closeBtn.addEventListener('click', close);
   prevBtn.addEventListener('click', prev);

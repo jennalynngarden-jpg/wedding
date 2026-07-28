@@ -331,6 +331,13 @@ document.addEventListener('DOMContentLoaded', function () {
   var pinUndoBtn = document.getElementById('pin-undo');
   var pinPlacingHint = document.getElementById('pin-placing-hint');
   var pinPlacingCancelBtn = document.getElementById('pin-placing-cancel');
+  var pinConfirmBar = document.getElementById('pin-confirm-bar');
+  var pinConfirmCancelBtn = document.getElementById('pin-confirm-cancel');
+  var pinConfirmOkBtn = document.getElementById('pin-confirm-ok');
+  var mapContainerEl = document.querySelector('.map-container');
+
+  // Preview marker shown before a pin is confirmed
+  var previewMarker = null;
 
   // State for pin placement
   var isPlacingPin = false;
@@ -525,12 +532,38 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  // Treat phones as "mobile" for the full-screen behavior
+  function isMobile() {
+    return window.matchMedia('(max-width: 700px)').matches;
+  }
+
+  function enterFullscreen() {
+    if (!mapContainerEl) return;
+    mapContainerEl.classList.add('map-fullscreen');
+    document.body.classList.add('map-fullscreen-open');
+    // Leaflet must recalc its size after the container resizes, or tiles break
+    setTimeout(function () { map.invalidateSize(); }, 60);
+  }
+
+  function exitFullscreen() {
+    if (!mapContainerEl) return;
+    mapContainerEl.classList.remove('map-fullscreen');
+    document.body.classList.remove('map-fullscreen-open');
+    setTimeout(function () { map.invalidateSize(); }, 60);
+  }
+
   function enterPlacingMode() {
     isPlacingPin = true;
     mapEl.classList.add('pin-placing');
 
-    // Show the on-screen instruction (the only cue on touch devices)
-    if (pinPlacingHint) pinPlacingHint.classList.add('active');
+    // Center-pin pattern: show the fixed pin and the confirm bar. The guest
+    // pans the map so the pin sits over their location, then confirms.
+    if (mapContainerEl) mapContainerEl.classList.add('is-placing');
+    if (pinConfirmBar) pinConfirmBar.classList.add('active');
+    if (pinPlacingHint) pinPlacingHint.classList.remove('active');
+
+    // On phones, go full-screen so there's room to zoom in and place accurately
+    if (isMobile()) enterFullscreen();
 
     // Make sure guest layer is visible so user can see their pin
     if (!activeCategories.guest) {
@@ -545,7 +578,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function exitPlacingMode() {
     isPlacingPin = false;
     mapEl.classList.remove('pin-placing');
+    if (mapContainerEl) mapContainerEl.classList.remove('is-placing');
+    if (pinConfirmBar) pinConfirmBar.classList.remove('active');
     if (pinPlacingHint) pinPlacingHint.classList.remove('active');
+    exitFullscreen();
     addPinBtn.style.display = 'block';
   }
 
@@ -555,37 +591,42 @@ document.addEventListener('DOMContentLoaded', function () {
     pendingPinName = '';
   }
 
-  // Step 3: User clicks on the map to place the pin
-  map.on('click', function (e) {
-    if (!isPlacingPin || !pendingPinName) return;
+  // Confirm: save the pin at whatever point the map is currently centered on
+  if (pinConfirmOkBtn) {
+    pinConfirmOkBtn.addEventListener('click', function () {
+      if (!isPlacingPin || !pendingPinName) return;
+      var center = map.getCenter();
+      var lat = center.lat;
+      var lng = center.lng;
+      var name = pendingPinName;
 
-    var lat = e.latlng.lat;
-    var lng = e.latlng.lng;
-    var name = pendingPinName;
+      pinConfirmOkBtn.disabled = true;
+      pinConfirmOkBtn.textContent = 'Saving…';
 
-    exitPlacingMode();
-    pendingPinName = '';
-
-    // Look up the city name, then add marker and save
-    getCityFromCoords(lat, lng, function (city) {
-      // Save to backend first to get the real pinId
-      savePin(name, lat, lng, city, function (err, pinId) {
-        if (err) {
-          alert('Could not save your pin. Please try again.');
-          return;
-        }
-
-        // Add the marker with the real pinId
-        var marker = addGuestMarker(name, lat, lng, pinId, city);
-
-        // Store for undo
-        lastAddedPin = { pinId: pinId, marker: marker };
-
-        // Show toast with undo option
-        showToast();
+      getCityFromCoords(lat, lng, function (city) {
+        savePin(name, lat, lng, city, function (err, pinId) {
+          pinConfirmOkBtn.disabled = false;
+          pinConfirmOkBtn.textContent = 'Confirm pin';
+          if (err) {
+            alert('Could not save your pin. Please try again.');
+            return;
+          }
+          pendingPinName = '';
+          exitPlacingMode();  // hides pin/bar, exits full-screen
+          var marker = addGuestMarker(name, lat, lng, pinId, city);
+          lastAddedPin = { pinId: pinId, marker: marker };
+          showToast();
+        });
       });
     });
-  });
+  }
+
+  // Cancel placement entirely
+  if (pinConfirmCancelBtn) {
+    pinConfirmCancelBtn.addEventListener('click', function () {
+      cancelPinPlacement();
+    });
+  }
 
   // Allow pressing Escape to cancel placing mode
   document.addEventListener('keydown', function (e) {

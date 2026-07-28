@@ -146,30 +146,57 @@
     });
   }
 
-  // Floral line-art loader: a single sage line that draws itself and loops,
-  // echoing the continuous line-art florals on our invitations.
-  var FLORAL_LOADER_HTML =
-    '<div class="floral-loader" role="status" aria-live="polite">' +
-      '<svg viewBox="0 0 120 50" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-        '<path pathLength="1" d="M10,25 Q30,25 32,25 C30,12 44,12 42,24 Q42,25 52,25 ' +
-        'C52,38 66,38 64,26 Q64,25 74,25 C74,12 88,12 86,24 Q86,25 96,25 ' +
-        'C96,36 106,34 104,26 Q104,25 110,25"/>' +
+  // Floral line-art loader: a flower that draws itself and loops, echoing the
+  // continuous line-art florals on our invitations. Caption is customizable.
+  function floralLoaderHTML(caption) {
+    return '<div class="floral-loader" role="status" aria-live="polite">' +
+      '<svg viewBox="0 0 100 108" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+        '<g transform="translate(50,40)">' +
+          '<path pathLength="1" d="M0,16 C0,34 0,50 0,64"/>' +               // stem
+          '<path pathLength="1" d="M0,44 C10,37 18,43 16,52 C9,54 2,50 0,46"/>' + // leaf
+          '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(0)"/>' +
+          '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(72)"/>' +
+          '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(144)"/>' +
+          '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(216)"/>' +
+          '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(288)"/>' +
+          '<circle pathLength="1" cx="0" cy="0" r="4.5"/>' +                 // flower center
+        '</g>' +
       '</svg>' +
-      '<p class="search-loading">Finding your invitation&hellip;</p>' +
+      '<p class="search-loading">' + caption + '</p>' +
     '</div>';
+  }
+
+  // Fetch JSON with automatic retries. Google Apps Script can be slow to
+  // "wake up" (cold start) and mobile connections occasionally drop a request,
+  // so we retry a couple of times before giving up. Also treats a non-OK
+  // response as a failure so it retries rather than choking on error HTML.
+  function fetchJSON(url, retries) {
+    if (retries == null) retries = 2;
+    return fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .catch(function (err) {
+        if (retries > 0) {
+          return new Promise(function (resolve) { setTimeout(resolve, 700); })
+            .then(function () { return fetchJSON(url, retries - 1); });
+        }
+        throw err;
+      });
+  }
 
   function fetchGuests(query) {
     var resultsEl = document.getElementById('search-results');
-    resultsEl.innerHTML = FLORAL_LOADER_HTML;
+    resultsEl.innerHTML = floralLoaderHTML('Finding your invitation&hellip;');
 
     var url = APPS_SCRIPT_URL + '?action=searchGuests&query=' + encodeURIComponent(query);
-    fetch(url)
-      .then(function (r) { return r.json(); })
+    fetchJSON(url)
       .then(function (data) {
         renderSearchResults(data.guests || []);
       })
       .catch(function () {
-        resultsEl.innerHTML = '<p class="no-results">Something went wrong. Please try again.</p>';
+        resultsEl.innerHTML = '<p class="no-results">We had trouble reaching our guest list &mdash; please check your connection and try again.</p>';
       });
   }
 
@@ -202,14 +229,18 @@
       partyId: btn.getAttribute('data-party-id'),
       displayName: btn.getAttribute('data-name')
     };
+    // Show the floral loader immediately — looking up the party is a network
+    // round-trip to Google's servers and can take a moment, so give feedback
+    // instead of leaving the form looking frozen.
+    document.getElementById('search-results').innerHTML =
+      floralLoaderHTML('Loading your party&hellip;');
     fetchParty(state.selectedGuest.guestId);
   }
 
   /* ---------- Step 2: Party Members ---------- */
   function fetchParty(guestId) {
     var url = APPS_SCRIPT_URL + '?action=getParty&guestId=' + encodeURIComponent(guestId);
-    fetch(url)
-      .then(function (r) { return r.json(); })
+    fetchJSON(url)
       .then(function (data) {
         state.partyMembers = [];
         for (var i = 0; i < data.members.length; i++) {
@@ -240,6 +271,11 @@
 
         renderPartyMembers();
         goToStep('2');
+      })
+      .catch(function () {
+        // Still on step 1 visually — replace the loader with a friendly error
+        document.getElementById('search-results').innerHTML =
+          '<p class="no-results">We had trouble loading your party &mdash; please check your connection and try again.</p>';
       });
   }
 

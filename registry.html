@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=23">
+  <link rel="stylesheet" href="css/styles.css?v=36">
 </head>
 <body>
 
@@ -39,15 +39,45 @@
       <h2 class="section-heading">Registry</h2>
       <div class="section-divider"></div>
 
-      <p class="section-intro">Your presence at our wedding is the greatest gift of all. However, if you wish to honor us with a gift, we've registered at the following places.</p>
+      <p class="section-intro">Your presence at our wedding is the greatest gift of all. But if you'd like to help us celebrate, here are a few things on our list &mdash; and a honeymoon fund to help us start our next adventure.</p>
 
-      <div class="registry-links">
-        <a href="#" class="registry-btn">Crate &amp; Barrel</a>
-        <a href="#" class="registry-btn">Amazon</a>
-        <a href="#" class="registry-btn">Honeymoon Fund</a>
+      <!-- Honeymoon Fund. Update the Venmo handle/link and the description below. -->
+      <div class="honeymoon-card">
+        <h3 class="honeymoon-title">Honeymoon Fund</h3>
+        <p class="honeymoon-desc">We're dreaming of our honeymoon adventure, and any contribution toward it means the world to us.</p>
+        <a class="honeymoon-btn" href="https://venmo.com/u/YOUR-VENMO-HANDLE" target="_blank" rel="noopener">Contribute via Venmo</a>
+        <p class="honeymoon-handle">@YOUR-VENMO-HANDLE</p>
       </div>
+
+      <!-- Registry items are loaded from your Google Sheet -->
+      <div class="registry-grid" id="registry-grid"></div>
+      <p class="registry-status" id="registry-status">Loading our registry&hellip;</p>
     </section>
   </main>
+
+  <!-- Mark-as-purchased modal -->
+  <div class="registry-modal-overlay" id="registry-modal" style="display:none;">
+    <div class="registry-modal">
+      <button class="registry-modal-close" id="registry-modal-close" aria-label="Close">&times;</button>
+      <h3 class="registry-modal-title">Mark as purchased</h3>
+      <p class="registry-modal-item" id="registry-modal-item"></p>
+      <p class="registry-modal-help">Letting us know keeps others from buying a duplicate &mdash; and helps us send a thank-you!</p>
+      <div class="form-group">
+        <label for="buyer-name">Your name</label>
+        <input type="text" id="buyer-name" placeholder="First and last name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="buyer-email">Email</label>
+        <input type="email" id="buyer-email" placeholder="you@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="buyer-note">Note <span class="optional-label">(optional)</span></label>
+        <textarea id="buyer-note" rows="2" placeholder="Anything you'd like us to know"></textarea>
+      </div>
+      <p class="registry-modal-error" id="registry-modal-error"></p>
+      <button class="registry-confirm-btn" id="registry-confirm">Confirm purchase</button>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="crest crest--small">
@@ -57,6 +87,7 @@
     <p class="footer-date">July 24, 2027 &middot; Monterey, California</p>
   </footer>
 
-  <script src="js/main.js?v=2"></script>
+  <script src="js/main.js?v=4"></script>
+  <script src="js/registry.js?v=1"></script>
 </body>
 </html>
