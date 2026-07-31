@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css?v=36">
+  <link rel="stylesheet" href="css/styles.css?v=42">
 </head>
 <body>
 
@@ -60,6 +60,16 @@
           </svg>
         </div>
 
+        <!-- Address search + close, shown while placing a pin -->
+        <div id="pin-search" class="pin-search">
+          <div class="pin-search-row">
+            <button type="button" id="map-close" class="map-close-btn" aria-label="Close map">&times;</button>
+            <input type="text" id="pin-search-input" placeholder="Search a city or address&hellip;" autocomplete="off">
+            <button type="button" id="pin-search-btn" class="pin-search-btn">Search</button>
+          </div>
+          <p id="pin-search-status" class="pin-search-status"></p>
+        </div>
+
         <!-- Pin overlay UI -->
         <div id="pin-overlay" class="pin-overlay">
           <button id="add-pin-btn" class="add-pin-btn">+ Add your pin</button>
@@ -82,6 +92,7 @@
         <!-- Confirm bar shown while placing (center-pin pattern) -->
         <div id="pin-confirm-bar" class="pin-confirm-bar">
           <span class="pin-confirm-text">Move the map to position your pin</span>
+          <span class="pin-confirm-subtext">Only your pin&rsquo;s spot on the map is saved, not your exact address.</span>
           <div class="pin-confirm-actions">
             <button id="pin-confirm-cancel" class="pin-confirm-cancel-btn">Cancel</button>
             <button id="pin-confirm-ok" class="pin-confirm-ok-btn">Confirm pin</button>
@@ -207,6 +218,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/main.js?v=4"></script>
-  <script src="js/travel-map.js?v=5"></script>
+  <script src="js/travel-map.js?v=6"></script>
 </body>
 </html>

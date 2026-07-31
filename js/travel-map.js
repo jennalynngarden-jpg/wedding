@@ -335,6 +335,10 @@ document.addEventListener('DOMContentLoaded', function () {
   var pinConfirmCancelBtn = document.getElementById('pin-confirm-cancel');
   var pinConfirmOkBtn = document.getElementById('pin-confirm-ok');
   var mapContainerEl = document.querySelector('.map-container');
+  var mapCloseBtn = document.getElementById('map-close');
+  var pinSearchInput = document.getElementById('pin-search-input');
+  var pinSearchBtn = document.getElementById('pin-search-btn');
+  var pinSearchStatus = document.getElementById('pin-search-status');
 
   // Preview marker shown before a pin is confirmed
   var previewMarker = null;
@@ -561,6 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (mapContainerEl) mapContainerEl.classList.add('is-placing');
     if (pinConfirmBar) pinConfirmBar.classList.add('active');
     if (pinPlacingHint) pinPlacingHint.classList.remove('active');
+    if (pinSearchInput) pinSearchInput.value = '';
+    if (pinSearchStatus) pinSearchStatus.textContent = '';
 
     // On phones, go full-screen so there's room to zoom in and place accurately
     if (isMobile()) enterFullscreen();
@@ -625,6 +631,54 @@ document.addEventListener('DOMContentLoaded', function () {
   if (pinConfirmCancelBtn) {
     pinConfirmCancelBtn.addEventListener('click', function () {
       cancelPinPlacement();
+    });
+  }
+
+  // Close (X) button — collapse the map / cancel placement
+  if (mapCloseBtn) {
+    mapCloseBtn.addEventListener('click', function () {
+      cancelPinPlacement();
+    });
+  }
+
+  // Address search: type a city/address to jump the map (and the center pin)
+  // there, instead of panning by hand.
+  function runAddressSearch() {
+    var q = (pinSearchInput.value || '').trim();
+    if (!q) return;
+    pinSearchStatus.textContent = 'Searching…';
+    pinSearchStatus.className = 'pin-search-status';
+
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
+      encodeURIComponent(q);
+    fetch(url, { headers: { 'Accept-Language': 'en' } })
+      .then(function (r) { return r.json(); })
+      .then(function (results) {
+        if (results && results.length) {
+          var lat = parseFloat(results[0].lat);
+          var lng = parseFloat(results[0].lon);
+          map.setView([lat, lng], 12);
+          pinSearchStatus.textContent = '';
+        } else {
+          pinSearchStatus.textContent = 'No match found — try a city or ZIP code.';
+          pinSearchStatus.className = 'pin-search-status is-error';
+        }
+      })
+      .catch(function () {
+        pinSearchStatus.textContent = 'Search failed — please try again.';
+        pinSearchStatus.className = 'pin-search-status is-error';
+      });
+  }
+
+  if (pinSearchBtn) {
+    pinSearchBtn.addEventListener('click', runAddressSearch);
+  }
+  if (pinSearchInput) {
+    pinSearchInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runAddressSearch();
+      }
     });
   }
 

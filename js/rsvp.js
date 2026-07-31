@@ -292,20 +292,7 @@
       var m = state.partyMembers[i];
       var isPlusOne = m.relationship === 'plusone';
 
-      // Build dropdown options based on rehearsal dinner invitation
-      var selectHtml;
-      if (m.rehearsalDinner) {
-        selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
-          '<option value="wedding-and-rehearsal"' + (m.attending === 'wedding-and-rehearsal' ? ' selected' : '') + '>Wedding &amp; rehearsal</option>' +
-          '<option value="wedding-only"' + (m.attending === 'wedding-only' ? ' selected' : '') + '>Wedding only</option>' +
-          '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
-          '</select>';
-      } else {
-        selectHtml = '<select class="attendance-select" data-index="' + i + '">' +
-          '<option value="yes"' + (m.attending === 'yes' ? ' selected' : '') + '>Attending</option>' +
-          '<option value="no"' + (m.attending === 'no' ? ' selected' : '') + '>Can\'t come</option>' +
-          '</select>';
-      }
+      var selectHtml = dropdownHTML(i, attendanceOptions(m), m.attending);
 
       if (isPlusOne) {
         var primaryName = state.selectedGuest ? state.selectedGuest.displayName.split(' ')[0] : 'Guest';
@@ -323,12 +310,10 @@
     }
     container.innerHTML = html;
 
-    var selects = container.querySelectorAll('.attendance-select');
-    for (var j = 0; j < selects.length; j++) {
-      selects[j].addEventListener('change', function () {
-        var idx = parseInt(this.getAttribute('data-index'), 10);
-        state.partyMembers[idx].attending = this.value;
-      });
+    // Wire up each custom dropdown
+    var dds = container.querySelectorAll('.attend-dd');
+    for (var j = 0; j < dds.length; j++) {
+      setupDropdown(dds[j]);
     }
 
     // Update plus-one display names as they type
@@ -337,6 +322,90 @@
       plusOneInputs[k].addEventListener('input', function () {
         var idx = parseInt(this.getAttribute('data-index'), 10);
         state.partyMembers[idx].displayName = this.value.trim() || '+1 Guest';
+      });
+    }
+  }
+
+  /* ---------- Custom attendance dropdown ---------- */
+  // Native <select> menus are drawn by the OS and can't be positioned; this is a
+  // custom dropdown that opens directly below the field at matching width.
+
+  function attendanceOptions(m) {
+    if (m.rehearsalDinner) {
+      return [
+        { value: 'wedding-and-rehearsal', label: 'Wedding & rehearsal' },
+        { value: 'wedding-only', label: 'Wedding only' },
+        { value: 'no', label: "Can't come" }
+      ];
+    }
+    return [
+      { value: 'yes', label: 'Attending' },
+      { value: 'no', label: "Can't come" }
+    ];
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function dropdownHTML(index, options, current) {
+    var currentLabel = options.length ? options[0].label : '';
+    var optsHtml = '';
+    for (var i = 0; i < options.length; i++) {
+      var o = options[i];
+      var sel = o.value === current;
+      if (sel) currentLabel = o.label;
+      optsHtml += '<li class="attend-dd-option' + (sel ? ' selected' : '') + '" role="option" ' +
+        'data-value="' + o.value + '" aria-selected="' + (sel ? 'true' : 'false') + '">' +
+        '<span class="attend-dd-check" aria-hidden="true">✓</span>' +
+        '<span class="attend-dd-label">' + escapeHTML(o.label) + '</span></li>';
+    }
+    return '<div class="attend-dd" data-index="' + index + '">' +
+      '<button type="button" class="attend-dd-trigger" aria-haspopup="listbox" aria-expanded="false">' +
+        '<span class="attend-dd-value">' + escapeHTML(currentLabel) + '</span>' +
+        '<span class="attend-dd-caret" aria-hidden="true"></span>' +
+      '</button>' +
+      '<ul class="attend-dd-menu" role="listbox">' + optsHtml + '</ul>' +
+    '</div>';
+  }
+
+  function closeAllDropdowns() {
+    var open = document.querySelectorAll('.attend-dd.open');
+    for (var i = 0; i < open.length; i++) {
+      open[i].classList.remove('open');
+      var t = open[i].querySelector('.attend-dd-trigger');
+      if (t) t.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function setupDropdown(dd) {
+    var idx = parseInt(dd.getAttribute('data-index'), 10);
+    var trigger = dd.querySelector('.attend-dd-trigger');
+    var valueEl = dd.querySelector('.attend-dd-value');
+    var options = dd.querySelectorAll('.attend-dd-option');
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var wasOpen = dd.classList.contains('open');
+      closeAllDropdowns();
+      if (!wasOpen) {
+        dd.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    for (var i = 0; i < options.length; i++) {
+      options[i].addEventListener('click', function () {
+        state.partyMembers[idx].attending = this.getAttribute('data-value');
+        valueEl.textContent = this.querySelector('.attend-dd-label').textContent;
+        for (var k = 0; k < options.length; k++) {
+          options[k].classList.remove('selected');
+          options[k].setAttribute('aria-selected', 'false');
+        }
+        this.classList.add('selected');
+        this.setAttribute('aria-selected', 'true');
+        dd.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
       });
     }
   }
@@ -733,6 +802,11 @@
     initSearch();
     initPhotoUpload();
     initModal();
+
+    // Close any open attendance dropdown when tapping elsewhere
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.attend-dd')) closeAllDropdowns();
+    });
 
     // Render the initial progress dots (4 steps by default)
     renderProgressDots();
