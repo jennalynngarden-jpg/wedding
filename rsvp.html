@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=42">
+  <link rel="stylesheet" href="css/styles.css?v=64">
 </head>
 <body>
 
@@ -60,6 +60,7 @@
         <!-- Step 2: Party Selection -->
         <div class="rsvp-step" id="step-2">
           <h3 class="step-heading">Your party</h3>
+          <p class="step-description" id="step-2-desc" style="display:none;"></p>
           <div class="party-members" id="party-members"></div>
           <div class="step-nav">
             <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
@@ -84,7 +85,7 @@
         <!-- Step 3: Meal & Dietary (attending only) -->
         <div class="rsvp-step" id="step-3">
           <h3 class="step-heading">Dinner selections</h3>
-          <p class="step-description">Choose a meal for each guest.</p>
+          <p class="step-description">Dinner will start with a garden green house salad, and all entrees will come with a side of red roasted potatoes. If you have dietary restrictions, please note them below and we&rsquo;ll coordinate with the venue to make sure they&rsquo;re accounted for.</p>
           <div class="meal-selections" id="meal-selections"></div>
           <div class="step-nav">
             <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
@@ -148,15 +149,13 @@
         <!-- Confirmation -->
         <div class="rsvp-step" id="step-confirmation" style="display:none;">
           <h3 class="step-heading">Thank you!</h3>
-          <p class="step-description">We got your RSVP. See you on July 24, 2027!</p>
+          <p class="step-description">We got your RSVP. See you on July 24, 2027! If you&rsquo;d like to show us where you&rsquo;re traveling from, feel free to add a pin to our guest map.</p>
 
           <div class="pin-promo">
-            <p class="pin-promo-text">Show us where you're traveling from! Add a pin to our guest map.</p>
             <a href="travel.html?addpin=true" class="pin-promo-btn">Add your pin</a>
           </div>
 
           <div class="attendee-section" id="attendee-section" style="display:none;">
-            <div class="section-divider" style="margin: 2.5rem auto 2rem;"></div>
             <h3 class="step-heading">Who's coming</h3>
             <p class="step-description">Here's who else will be celebrating with us!</p>
             <div class="attendee-list" id="attendee-list"></div>
@@ -185,6 +184,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/rsvp.js?v=7"></script>
+  <script src="js/rsvp.js?v=10"></script>
 </body>
 </html>

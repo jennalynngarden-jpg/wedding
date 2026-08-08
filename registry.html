@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=42">
+  <link rel="stylesheet" href="css/styles.css?v=64">
 </head>
 <body>
 
@@ -39,36 +39,138 @@
       <h2 class="section-heading">Registry</h2>
       <div class="section-divider"></div>
 
-      <p class="section-intro">Your presence at our wedding is the greatest gift of all. But if you'd like to help us celebrate, here are a few things on our list &mdash; and a honeymoon fund to help us start our next adventure.</p>
+      <p class="section-intro section-intro--wide">We know that travel is expensive and that your lives are busy so your presence at our wedding is more than we could ask for! And we mean that!!! TRULY!!! But if you TRULY INSIST on a gift and absolutely will not take no for an answer&hellip;here are a few ideas.</p>
 
-      <!-- Honeymoon Fund. Update the Venmo handle/link and the description below. -->
-      <div class="honeymoon-card">
-        <h3 class="honeymoon-title">Honeymoon Fund</h3>
-        <p class="honeymoon-desc">We're dreaming of our honeymoon adventure, and any contribution toward it means the world to us.</p>
-        <a class="honeymoon-btn" href="https://venmo.com/u/jennagarden" target="_blank" rel="noopener">Contribute via Venmo</a>
-        <p class="honeymoon-handle">@jennagarden</p>
-      </div>
-
-      <!-- Registry items are loaded from your Google Sheet -->
+      <!-- Registry items load from your Google Sheet; the Honeymoon Fund card
+           is added automatically as the first card (see js/registry.js) -->
       <div class="registry-grid" id="registry-grid"></div>
-      <p class="registry-status" id="registry-status">Loading our registry&hellip;</p>
+      <div class="registry-status" id="registry-status"></div>
+
+      <!-- Causes we love. Set up a free fundraiser at every.org, then for each
+           card below: fill in the charity name, the short blurb (shown on the
+           card), the longer data-desc (shown in the detail view), and paste
+           your Every.org fundraiser link into data-link. Optional: put an
+           image URL in data-image to show a photo instead of the leaf. -->
+      <div class="causes-section">
+        <div class="section-divider"></div>
+        <h3 class="causes-title">Causes we love</h3>
+        <p class="causes-intro">We are so spoiled and really don&rsquo;t need anything. If the registry items have already been purchased or aren&rsquo;t really your style, please consider donating to one of the nonprofits below as a gift to us.</p>
+      </div>
+      <div class="causes-carousel">
+        <button type="button" class="causes-arrow causes-arrow--left" id="causes-prev" aria-label="Previous causes"></button>
+        <div class="registry-grid causes-grid" id="causes-grid">
+        <div class="registry-item registry-item--cause"
+             data-name="LEMO Foundation"
+             data-desc="The LEMO (Liahona Motu) Foundation gives under-resourced Bay Area youth the sports, mentorship, and education programs they need to thrive, from athletic training to college support. Donations go directly to LEMO through their website."
+             data-why="When she was in middle school, one of Jenna's neighbors noticed her practicing volleyball in her yard and generously covered her dues for her to play club volleyball on the same team as his daughter. Because it was so much fun, for subsequent seasons Jenna worked to raise money (mostly detailing cars and selling baked goods) to cover her dues and learned how to advocate for herself by contacting club directors about financial aid.||Being able to play club volleyball changed her life by making her a strong enough player to continue to play in high school, college, and beyond. It also helped build her confidence and teach her how to manage her time. Being able to help give other young players that same opportunity would mean the world to her."
+             data-link="https://www.lemou.org/get-involved"
+             data-cta="Donate to LEMO"
+             data-image="images/lemo-logo.jpg"
+             data-gallery="images/mbvc-1.jpg,images/mbvc-2.jpg,images/lemo-volleyball.jpg,images/lemo-volleyball-sign.jpg"
+             data-gallery-style="scatter">
+          <div class="registry-item-imgwrap registry-item-imgwrap--logo">
+            <img src="images/lemo-logo.jpg" alt="LEMO Foundation logo" class="registry-item-img">
+          </div>
+          <div class="registry-item-body">
+            <h3 class="registry-item-name">LEMO Foundation</h3>
+            <p class="registry-item-desc">Creating opportunities for underserved student-athletes in the Bay Area.</p>
+            <div class="registry-item-actions"><span class="registry-view-hint">View details</span></div>
+          </div>
+        </div>
+        <div class="registry-item registry-item--cause"
+             data-name="SCAR Animal Rescue"
+             data-desc="South County Animal Rescue is a volunteer-run nonprofit in Soledad that rescues animals across South Monterey County and helps community pets through spay and neuter programs, medical care, and adoption. Donations go directly to SCAR through their website."
+             data-why="Jenna and Liam both grew up with animals and love pretty much every animal they encounter. Jenna&rsquo;s mom Georgia fosters dogs through SCAR, giving at-risk dogs a safe place to rest and helping them transition into loving homes. Summer (pictured) came into Georgia&rsquo;s care with a broken leg, and funding from SCAR covered her vet care until she was fully healed and ready for adoption."
+             data-link="https://www.scar.pet/donations"
+             data-cta="Donate to SCAR"
+             data-image="images/scar-logo.png"
+             data-gallery="images/summer-and-mommy.jpg">
+          <div class="registry-item-imgwrap registry-item-imgwrap--logo">
+            <img src="images/scar-logo.png" alt="SCAR Animal Rescue logo" class="registry-item-img">
+          </div>
+          <div class="registry-item-body">
+            <h3 class="registry-item-name">SCAR Animal Rescue</h3>
+            <p class="registry-item-desc">Rescuing and caring for animals in South Monterey County.</p>
+            <div class="registry-item-actions"><span class="registry-view-hint">View details</span></div>
+          </div>
+        </div>
+        <div class="registry-item registry-item--cause"
+             data-name="Bright Spot Network"
+             data-desc="Bright Spot Network helps families navigate cancer, with support groups, financial assistance, and programs for young children whose parents are facing a diagnosis. Donations go directly to Bright Spot Network through their website."
+             data-why="Longtime Parrish family friends Sue and Dave Taylor's daughter Amy started this organization to help families navigating cancer."
+             data-link="https://www.brightspotnetwork.org/donate"
+             data-cta="Donate to Bright Spot"
+             data-image="images/bright-spot-logo.jpeg">
+          <div class="registry-item-imgwrap registry-item-imgwrap--logo">
+            <img src="images/bright-spot-logo.jpeg" alt="Bright Spot Network logo" class="registry-item-img">
+          </div>
+          <div class="registry-item-body">
+            <h3 class="registry-item-name">Bright Spot Network</h3>
+            <p class="registry-item-desc">Helping families with young children navigate cancer.</p>
+            <div class="registry-item-actions"><span class="registry-view-hint">View details</span></div>
+          </div>
+        </div>
+        <div class="registry-item registry-item--cause"
+             data-name="American Legion Auxiliary Unit 589"
+             data-desc="A Salinas organization serving veterans, their families, and the community since 1942, from honoring veterans to funding scholarships. They don't take donations online, so send your gift through our Venmo with &quot;Unit 589&quot; in the note, and we'll pass along every dollar."
+             data-why="Jenna&rsquo;s late grandfather Don served in the Navy, and the American Legion Auxiliary provided scholarships to both Jenna and her sister Lacey to help cover their college expenses. The Garden kids have also entered (and often won) their Poppy Poster art contest every year. The ladies at the Salinas chapter of the ALA work very hard to fundraise for the scholarships that they give out every year."
+             data-link="https://venmo.com/u/jennagarden"
+             data-cta="Give via our Venmo"
+             data-image="images/legion-auxiliary-logo.png"
+             data-gallery="images/ala-jenna-scholarship.jpg,images/ala-lacey.jpg,images/ala-poppy-poster.jpg"
+             data-gallery-style="scatter">
+          <div class="registry-item-imgwrap registry-item-imgwrap--logo">
+            <img src="images/legion-auxiliary-logo.png" alt="American Legion Auxiliary logo" class="registry-item-img">
+          </div>
+          <div class="registry-item-body">
+            <h3 class="registry-item-name">American Legion Auxiliary Unit 589</h3>
+            <p class="registry-item-desc">Serving veterans and their families in Salinas.</p>
+            <div class="registry-item-actions"><span class="registry-view-hint">View details</span></div>
+          </div>
+        </div>
+        </div>
+        <button type="button" class="causes-arrow causes-arrow--right" id="causes-next" aria-label="More causes"></button>
+      </div>
     </section>
   </main>
+
+  <!-- Item / cause detail modal (opened by tapping a card) -->
+  <div class="registry-modal-overlay" id="registry-detail-modal" style="display:none;">
+    <div class="registry-modal registry-detail">
+      <button class="registry-modal-close" id="registry-detail-close" aria-label="Close">&times;</button>
+      <div class="registry-detail-scroll">
+        <div class="registry-detail-grid">
+          <div class="registry-detail-media">
+            <div class="registry-detail-imgwrap" id="detail-imgwrap">
+              <img class="registry-detail-img" id="detail-img" src="" alt="">
+            </div>
+            <div class="registry-detail-gallery" id="detail-gallery"></div>
+          </div>
+          <h3 class="registry-modal-title" id="detail-name"></h3>
+          <p class="registry-detail-price" id="detail-price"></p>
+          <div class="registry-detail-text">
+            <p class="registry-detail-label" id="detail-about-label" style="display:none;">About</p>
+            <p class="registry-detail-desc" id="detail-desc"></p>
+            <p class="registry-detail-label" id="detail-why-label" style="display:none;">Why it matters to us</p>
+            <div class="registry-detail-whytext" id="detail-why" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="registry-detail-footer">
+        <div class="registry-detail-actions" id="detail-actions"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Mark-as-purchased modal -->
   <div class="registry-modal-overlay" id="registry-modal" style="display:none;">
     <div class="registry-modal">
       <button class="registry-modal-close" id="registry-modal-close" aria-label="Close">&times;</button>
-      <h3 class="registry-modal-title">Mark as purchased</h3>
-      <p class="registry-modal-item" id="registry-modal-item"></p>
-      <p class="registry-modal-help">Letting us know keeps others from buying a duplicate &mdash; and helps us send a thank-you!</p>
+      <h3 class="registry-modal-title registry-modal-title--purchase" id="registry-modal-title"></h3>
+      <p class="registry-modal-help">Let others know you bought this. If mailing to Jenna and Liam, their address is <strong>571 McCarty Avenue, Mountain View, CA 94041.</strong></p>
       <div class="form-group">
         <label for="buyer-name">Your name</label>
         <input type="text" id="buyer-name" placeholder="First and last name" autocomplete="name">
-      </div>
-      <div class="form-group">
-        <label for="buyer-email">Email</label>
-        <input type="email" id="buyer-email" placeholder="you@email.com" autocomplete="email">
       </div>
       <div class="form-group">
         <label for="buyer-note">Note <span class="optional-label">(optional)</span></label>
@@ -76,6 +178,29 @@
       </div>
       <p class="registry-modal-error" id="registry-modal-error"></p>
       <button class="registry-confirm-btn" id="registry-confirm">Confirm purchase</button>
+    </div>
+  </div>
+
+  <!-- Record-a-donation modal (opens after clicking a "Donate" button) -->
+  <div class="registry-modal-overlay" id="donation-modal" style="display:none;">
+    <div class="registry-modal">
+      <button class="registry-modal-close" id="donation-close" aria-label="Close">&times;</button>
+      <h3 class="registry-modal-title registry-modal-title--purchase" id="donation-title"></h3>
+      <p class="registry-modal-help">If you donated, feel free to let us know here so we can send you a proper thank you. This is completely optional.</p>
+      <div class="form-group">
+        <label for="donor-name">Your name</label>
+        <input type="text" id="donor-name" placeholder="First and last name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="donor-amount">Amount <span class="optional-label">(optional)</span></label>
+        <input type="text" id="donor-amount" placeholder="e.g., $50" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="donor-note">Note <span class="optional-label">(optional)</span></label>
+        <textarea id="donor-note" rows="2" placeholder="Anything you'd like us to know"></textarea>
+      </div>
+      <p class="registry-modal-error" id="donation-error"></p>
+      <button class="registry-confirm-btn" id="donation-confirm">Record donation</button>
     </div>
   </div>
 
@@ -88,6 +213,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/registry.js?v=1"></script>
+  <script src="js/registry.js?v=16"></script>
 </body>
 </html>

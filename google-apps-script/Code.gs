@@ -36,13 +36,23 @@ var PHOTO_FOLDER_ID = '17E0PNTgr66PecYd1_YTK4s1q2ZTy-EyM';
 /* Registry sheets:
    - REGISTRY_SHEET "Registry" columns (row 1 = headers):
        A id | B name | C description | D link | E image | F price | G reserved
-     You fill A–F. Leave E (image) blank to auto-pull the product photo; put a
-     URL there to override. G (reserved) is managed automatically.
+     Only A (any unique id) and D (the product link) are required — the script
+     fetches the title, description, photo, and price from the product page
+     automatically and refreshes them daily so prices stay current.
+     B, C, E, and F are optional OVERRIDES: fill one in to use your own
+     wording/photo/price instead of the fetched one.
+     G (reserved) is managed automatically.
+     Columns H–L are the fetched-metadata cache — the script maintains them;
+     don't edit them by hand.
    - PURCHASES_SHEET "RegistryPurchases" columns:
        A timestamp | B itemId | C itemName | D buyerName | E buyerEmail | F note
      This is written automatically — it's your thank-you-note list. */
 var REGISTRY_SHEET = 'Registry';
 var PURCHASES_SHEET = 'RegistryPurchases';
+/* DONATIONS_SHEET "Donations" is written automatically when a guest records a
+   charitable donation — columns: A timestamp | B charity | C name | D amount |
+   E note. It's your thank-you-note list for donations. */
+var DONATIONS_SHEET = 'Donations';
 
 /* ---------- Web App Entry Points ---------- */
 
@@ -80,6 +90,9 @@ function doPost(e) {
   }
   if (action === 'markPurchased') {
     return markPurchased(data);
+  }
+  if (action === 'recordDonation') {
+    return recordDonation(data);
   }
 
   return jsonResponse({ error: 'Unknown action' });
@@ -327,6 +340,12 @@ function getPhotos() {
 
 /* ---------- GET: Registry Items ---------- */
 
+// How long fetched product metadata stays fresh before re-checking (hours),
+// and how many product pages we'll fetch during a single request (keeps the
+// registry loading fast; any remaining stale items refresh on later visits).
+var META_CACHE_HOURS = 24;
+var META_FETCHES_PER_CALL = 5;
+
 function getRegistry() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(REGISTRY_SHEET);
@@ -334,32 +353,46 @@ function getRegistry() {
 
   var data = sheet.getDataRange().getValues();
   var items = [];
+  var fetchesDone = 0;
+  var now = new Date().getTime();
 
-  // Row 0 = headers. Columns: A id, B name, C description, D link, E image,
-  // F price, G reserved
+  // Row 0 = headers.
+  // A id | B name | C description | D link | E image | F price | G reserved
+  // H–L (auto-managed): fetched title, description, image, price, fetched-at
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     var id = row[0];
-    var name = row[1];
-    if (!id && !name) continue;  // skip blank rows
+    var link = String(row[3] || '').trim();
+    if (!id) continue;  // skip blank rows
 
-    var image = String(row[4] || '').trim();
-    // If no image is set yet, try to pull one from the product page and cache
-    // it back into the sheet so we only fetch it once.
-    if (!image && row[3]) {
-      image = fetchOgImage(String(row[3]));
-      if (image) {
-        sheet.getRange(i + 1, 5).setValue(image);  // column E
-      }
+    var metaName = String(row[7] || '');
+    var metaDesc = String(row[8] || '');
+    var metaImage = String(row[9] || '');
+    var metaPrice = String(row[10] || '');
+    var fetchedAt = row[11] ? new Date(row[11]).getTime() : 0;
+
+    // Re-fetch stale metadata so titles and prices track the merchant's page
+    var isStale = !fetchedAt || (now - fetchedAt) > META_CACHE_HOURS * 3600 * 1000;
+    if (link && isStale && fetchesDone < META_FETCHES_PER_CALL) {
+      var meta = fetchProductMeta(link);
+      fetchesDone++;
+      // Keep previous values if a fetch comes back empty (page blocked/down)
+      metaName = meta.title || metaName;
+      metaDesc = meta.description || metaDesc;
+      metaImage = meta.image || metaImage;
+      metaPrice = meta.price || metaPrice;
+      sheet.getRange(i + 1, 8, 1, 5)
+        .setValues([[metaName, metaDesc, metaImage, metaPrice, new Date()]]);
     }
 
+    // Sheet columns B/C/E/F act as overrides; fetched metadata fills the gaps
     items.push({
       id: String(id),
-      name: String(name),
-      description: String(row[2] || ''),
-      link: String(row[3] || ''),
-      image: image,
-      price: String(row[5] || ''),
+      name: String(row[1] || '').trim() || metaName || 'Gift',
+      description: String(row[2] || '').trim() || metaDesc,
+      link: link,
+      image: String(row[4] || '').trim() || metaImage,
+      price: String(row[5] || '').trim() || metaPrice,
       reserved: row[6] === true || String(row[6]).toLowerCase() === 'yes' ||
                 String(row[6]).toLowerCase() === 'true'
     });
@@ -368,21 +401,73 @@ function getRegistry() {
   return jsonResponse({ items: items });
 }
 
-// Fetch a product page and pull its Open Graph preview image (og:image).
-function fetchOgImage(url) {
+// Fetch a product page and pull its title, description, preview image, and
+// price from standard tags (Open Graph, JSON-LD). Some stores (notably
+// Amazon) block automated fetches — use the override columns for those.
+function fetchProductMeta(url) {
+  var meta = { title: '', description: '', image: '', price: '' };
   try {
     var res = UrlFetchApp.fetch(url, {
       muteHttpExceptions: true,
       followRedirects: true,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WeddingRegistryBot/1.0)' }
     });
+    if (res.getResponseCode() >= 400) return meta;
     var html = res.getContentText();
-    var m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
-            html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-    return m ? m[1] : '';
+
+    meta.title = decodeEntities(matchMeta(html, 'og:title') || matchTag(html, 'title'));
+    meta.description = decodeEntities(matchMeta(html, 'og:description') ||
+                                      matchNameMeta(html, 'description'));
+    meta.image = matchMeta(html, 'og:image');
+
+    // Price: Open Graph / product tags first, then JSON-LD "price"
+    var amount = matchMeta(html, 'og:price:amount') ||
+                 matchMeta(html, 'product:price:amount');
+    if (!amount) {
+      var ld = html.match(/"price"\s*:\s*"?([0-9][0-9.,]*)"?/);
+      if (ld) amount = ld[1];
+    }
+    if (amount) {
+      var num = parseFloat(String(amount).replace(/,/g, ''));
+      if (!isNaN(num) && num > 0) {
+        meta.price = '$' + (num % 1 === 0 ? num.toFixed(0) : num.toFixed(2));
+      }
+    }
+
+    // Keep descriptions card-sized
+    if (meta.description.length > 220) {
+      meta.description = meta.description.slice(0, 217) + '…';
+    }
   } catch (e) {
-    return '';
+    // Return whatever we managed to collect
   }
+  return meta;
+}
+
+// <meta property="og:x" content="..."> in either attribute order
+function matchMeta(html, property) {
+  var m = html.match(new RegExp('<meta[^>]+property=["\']' + property + '["\'][^>]+content=["\']([^"\']+)["\']', 'i')) ||
+          html.match(new RegExp('<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']' + property + '["\']', 'i'));
+  return m ? m[1] : '';
+}
+
+// <meta name="description" content="...">
+function matchNameMeta(html, name) {
+  var m = html.match(new RegExp('<meta[^>]+name=["\']' + name + '["\'][^>]+content=["\']([^"\']+)["\']', 'i')) ||
+          html.match(new RegExp('<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']' + name + '["\']', 'i'));
+  return m ? m[1] : '';
+}
+
+// <title>...</title>
+function matchTag(html, tag) {
+  var m = html.match(new RegExp('<' + tag + '[^>]*>([^<]+)</' + tag + '>', 'i'));
+  return m ? m[1].trim() : '';
+}
+
+function decodeEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ');
 }
 
 /* ---------- POST: Mark Registry Item Purchased ---------- */
@@ -405,7 +490,8 @@ function markPurchased(data) {
       if (already) {
         return jsonResponse({ success: false, error: 'already-reserved' });
       }
-      itemName = String(rows[i][1]);
+      // Use the override name if set, else the fetched product title
+      itemName = String(rows[i][1] || rows[i][7] || '');
       sheet.getRange(i + 1, 7).setValue('yes');  // column G = reserved
       found = true;
       break;
@@ -426,6 +512,26 @@ function markPurchased(data) {
     itemName,
     String(data.buyerName || ''),
     String(data.buyerEmail || ''),
+    String(data.note || '')
+  ]);
+
+  return jsonResponse({ success: true });
+}
+
+/* ---------- POST: Record a Charitable Donation ---------- */
+
+function recordDonation(data) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(DONATIONS_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(DONATIONS_SHEET);
+    sheet.appendRow(['Timestamp', 'Charity', 'Name', 'Amount', 'Note']);
+  }
+  sheet.appendRow([
+    new Date(),
+    String(data.charity || ''),
+    String(data.name || ''),
+    String(data.amount || ''),
     String(data.note || '')
   ]);
 

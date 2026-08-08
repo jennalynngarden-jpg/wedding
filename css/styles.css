@@ -90,6 +90,11 @@ p {
   text-align: center;
 }
 
+/* Pulls a section closer to the one above it (less top padding) */
+.content-section--tight-top {
+  padding-top: 1rem;
+}
+
 .section-heading {
   margin-bottom: 0.5rem;
 }
@@ -104,6 +109,11 @@ p {
 .section-intro {
   margin-bottom: 2.5rem;
   color: var(--color-text-light);
+}
+
+/* Full-width intro that spans the content (e.g. matching the cards below it) */
+.section-intro--wide {
+  max-width: none;
 }
 
 /* When two intro paragraphs stack, keep them close as one block */
@@ -1572,11 +1582,11 @@ body.map-fullscreen-open {
 }
 
 .photo-carousel-track-container {
-  /* "clip" hides the neighbouring slides, but the clip-margin lets each photo's
-     soft shadow spill out a little instead of being cut off at the edge. */
-  overflow: clip;
-  overflow-clip-margin: 50px;
-  border-radius: 8px;
+  /* Clip left/right cleanly (hides neighbouring slides AND their shadows), but
+     keep top/bottom visible so the current photo's soft shadow can breathe.
+     The earlier clip-margin let the next slide's shadow bleed in on the side. */
+  overflow-x: clip;
+  overflow-y: visible;
   /* Height is set by JS to match the current photo, so the frame hugs each
      photo (spacing stays consistent; the frame height jumps between photos) */
   transition: height 0.4s ease;
@@ -2093,17 +2103,17 @@ body.map-fullscreen-open {
   color: var(--color-sage-hover);
 }
 
-/* ---------- Registry: Honeymoon Fund ---------- */
-.honeymoon-card {
-  max-width: 520px;
-  margin: 0 auto 3rem;
-  padding: 2.25rem 2rem;
-  background: var(--color-sage-light);
-  border-radius: 12px;
+/* ---------- Registry: Causes we love ---------- */
+.causes-section {
   text-align: center;
+  margin: 3.5rem auto 0;
 }
 
-.honeymoon-title {
+.causes-section .section-divider {
+  margin-bottom: 2rem;
+}
+
+.causes-title {
   font-family: var(--font-serif);
   font-size: 1.5rem;
   font-weight: 400;
@@ -2111,41 +2121,132 @@ body.map-fullscreen-open {
   margin-bottom: 0.75rem;
 }
 
-.honeymoon-desc {
+.causes-intro {
   font-size: 0.95rem;
-  color: var(--color-text);
-  margin: 0 auto 1.5rem;
-  max-width: 380px;
-}
-
-.honeymoon-btn {
-  display: inline-block;
-  padding: 0.85rem 2rem;
-  background: var(--color-heading);
-  color: #fff;
-  border-radius: 8px;
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  transition: background 0.3s ease;
-}
-
-.honeymoon-btn:hover {
-  background: var(--color-sage);
-}
-
-.honeymoon-handle {
-  font-size: 0.85rem;
   color: var(--color-text-light);
-  margin-top: 0.75rem;
+  margin: 0 auto 1.75rem;
+  /* Span the width of the cards below, like the other section intros */
+  max-width: none;
+}
+
+/* Cause cards share the registry card look; the grid just needs spacing */
+/* Wrapper positions the prev/next arrows over the carousel edges */
+.causes-carousel {
+  position: relative;
+}
+
+.causes-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.causes-arrow:hover {
+  border-color: var(--color-sage);
+}
+
+/* Drawn chevron (crisp, matches the site's other carets) */
+.causes-arrow::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--color-heading);
+  border-bottom: 2px solid var(--color-heading);
+}
+
+.causes-arrow--left {
+  left: -14px;
+}
+
+.causes-arrow--left::before {
+  transform: rotate(135deg);
+  margin-left: 3px;
+}
+
+.causes-arrow--right {
+  right: -14px;
+}
+
+.causes-arrow--right::before {
+  transform: rotate(-45deg);
+  margin-right: 3px;
+}
+
+/* Hidden when there's nothing more to scroll to in that direction */
+.causes-arrow[hidden] {
+  display: none;
+}
+
+/* On phones, rely on swipe instead of arrows */
+@media (max-width: 700px) {
+  .causes-arrow {
+    display: none;
+  }
+}
+
+/* Causes render as a horizontal carousel: 3 cards visible, scroll for more.
+   (.registry-grid.causes-grid beats the base .registry-grid display:grid) */
+.registry-grid.causes-grid {
+  display: flex;
+  gap: 1.75rem;
+  margin-top: 1.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* room so card shadows (and the small hover "lift") aren't clipped by the
+     scroll edges — top room keeps the border from vanishing on hover */
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.registry-grid.causes-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.causes-grid .registry-item {
+  /* Three cards across; the rest are reachable by scrolling */
+  flex: 0 0 calc((100% - 2 * 1.75rem) / 3);
+  scroll-snap-align: start;
+}
+
+/* On phones, show ~1 card at a time so it's comfortably swipeable */
+@media (max-width: 700px) {
+  .causes-grid .registry-item {
+    flex-basis: 82%;
+  }
+}
+
+.registry-cause-tag {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-sage-light);
+  color: var(--color-sage-hover);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* ---------- Registry: Item Grid ---------- */
 .registry-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.75rem;
   margin-top: 1rem;
 }
@@ -2164,6 +2265,7 @@ body.map-fullscreen-open {
   border-radius: 12px;
   overflow: hidden;
   background: #fff;
+  cursor: pointer;   /* whole card opens the detail view */
   transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
@@ -2172,17 +2274,44 @@ body.map-fullscreen-open {
   transform: translateY(-2px);
 }
 
+.registry-item:focus-visible {
+  outline: 2px solid var(--color-sage);
+  outline-offset: 2px;
+}
+
+/* Gift cards gently fade/slide in as they load, alongside the fund card */
+.registry-item--in {
+  animation: registry-card-in 0.45s ease both;
+}
+
+@keyframes registry-card-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registry-item--in {
+    animation: none;
+  }
+}
+
 .registry-item-imgwrap {
-  display: block;
-  aspect-ratio: 1 / 1;
+  /* Wider than tall so the image leaves more room for the text below */
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: #f4f2ee;
+  background: #fff;
+  /* Padding gives the whole image room to show (contained, never cropped) */
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .registry-item-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+  /* Show the whole image rather than cropping it to fill */
+  object-fit: contain;
   display: block;
   transition: transform 0.4s ease;
 }
@@ -2197,6 +2326,17 @@ body.map-fullscreen-open {
   align-items: center;
   justify-content: center;
   background: var(--color-sage-light);
+}
+
+/* Logo images (e.g. charity logos): show the whole logo with breathing room
+   instead of cropping it to fill the square like a photo */
+.registry-item-imgwrap--logo {
+  background: #fff;
+  padding: 1.5rem;
+}
+
+.registry-item-imgwrap--logo .registry-item-img {
+  object-fit: contain;
 }
 
 .registry-item-noimg {
@@ -2236,6 +2376,27 @@ body.map-fullscreen-open {
   margin-bottom: 1.1rem;
   /* Push the actions to the bottom so cards line up neatly */
   flex: 1;
+}
+
+/* Subtle "View details" hint at the bottom of unreserved cards */
+.registry-view-hint {
+  flex: 1;
+  text-align: center;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-light);
+  transition: all 0.25s ease;
+}
+
+.registry-item:hover .registry-view-hint {
+  border-color: var(--color-sage);
+  color: var(--color-sage-hover);
 }
 
 .registry-item-actions {
@@ -2351,6 +2512,13 @@ body.map-fullscreen-open {
   margin-bottom: 0.35rem;
 }
 
+/* Purchase modal title includes the product name, so keep it smaller/tighter */
+.registry-modal-title--purchase {
+  font-size: 1.15rem;
+  line-height: 1.3;
+  margin-bottom: 0.6rem;
+}
+
 .registry-modal-item {
   font-family: var(--font-sans);
   font-size: 0.9rem;
@@ -2403,6 +2571,245 @@ body.map-fullscreen-open {
 .registry-confirm-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* ---------- Registry: Detail View ----------
+   E-commerce style: image in the upper left, text to its right, and the
+   call-to-action buttons anchored to the bottom right. */
+/* The detail modal is a flex column: a scrollable body + a pinned footer CTA */
+.registry-detail {
+  max-width: 620px;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+  overflow: hidden;   /* the inner .registry-detail-scroll scrolls instead */
+  display: flex;
+  flex-direction: column;
+}
+
+.registry-detail-scroll {
+  overflow-y: auto;
+  padding: 2rem 1.75rem 0.5rem;
+}
+
+.registry-detail-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas:
+    "img name"
+    "img price"
+    "img desc";
+  column-gap: 1.5rem;
+}
+
+/* When there's no image at all, use a single full-width column */
+.registry-detail-grid--noimg {
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "name"
+    "price"
+    "desc";
+}
+
+/* Pinned footer with the CTA, plus a fade above hinting the text scrolls */
+.registry-detail-footer {
+  position: relative;
+  flex-shrink: 0;
+  padding: 1rem 1.75rem 1.5rem;
+  background: #fff;
+}
+
+.registry-detail-footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -32px;
+  height: 32px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+  pointer-events: none;
+}
+
+/* Left column: the main image plus any gallery photos, stacked */
+.registry-detail-media {
+  grid-area: img;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.registry-detail-imgwrap {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  /* White, so images blend into the modal with no visible box around them */
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.registry-detail-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Placeholder state (no product image): show the leaf small and centered */
+.registry-detail-imgwrap--empty {
+  background: var(--color-sage-light);
+}
+
+.registry-detail-imgwrap--empty .registry-detail-img {
+  width: 48px;
+  height: auto;
+  opacity: 0.6;
+}
+
+.registry-detail .registry-modal-title {
+  grid-area: name;
+  margin-bottom: 0.15rem;
+}
+
+.registry-detail-price {
+  grid-area: price;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  color: var(--color-sage-hover);
+  margin: 0 0 0.6rem;
+}
+
+.registry-detail-text {
+  grid-area: desc;
+  margin-bottom: 1rem;
+}
+
+/* Small uppercase label separating the "About" and "Why it matters to us"
+   sections in the detail view */
+.registry-detail-label {
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-sage-hover);
+  margin: 1.25rem 0 0.35rem;
+  max-width: none;
+}
+
+.registry-detail-text .registry-detail-label:first-child {
+  margin-top: 0;
+}
+
+.registry-detail-desc {
+  font-size: 0.92rem;
+  font-weight: 300;
+  color: var(--color-text);
+  line-height: 1.7;
+  max-width: none;
+}
+
+/* Space between paragraphs in the "Why it matters to us" section */
+.registry-detail-whytext p + p {
+  margin-top: 0.75rem;
+}
+
+/* Optional photo gallery within a detail view (e.g. personal snapshots).
+   Stacks under the main image in the left column. */
+.registry-detail-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.registry-detail-gallery img {
+  width: 100%;
+  height: auto;          /* keep the photo's natural shape — never cropped */
+  border-radius: 8px;
+  display: block;
+}
+
+/* "Scatter" gallery: snapshots stacked in a slightly angled, overlapping pile,
+   each with a little white photo frame (used for LEMO's volleyball photos). */
+.registry-detail-gallery.is-scatter {
+  display: block;
+  /* Extra bottom room so the last photo's soft shadow fades out fully
+     instead of being clipped at the edge of the scroll area */
+  padding: 0 0.25rem 2.75rem;
+  /* Pull the pile up so it overlaps into the logo's empty white space above */
+  margin-top: -4rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.registry-detail-gallery.is-scatter img {
+  width: 82%;
+  max-width: 155px;
+  height: auto;
+  display: inline-block;
+  background: #fff;
+  padding: 6px;                 /* white "photo" frame */
+  border-radius: 3px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* Overlap each snapshot with the one above it */
+.registry-detail-gallery.is-scatter img + img {
+  margin-top: -20px;
+}
+
+/* Alternate the tilt and nudge each photo side to side for a casual look */
+.registry-detail-gallery.is-scatter img:nth-child(1) { transform: rotate(-5deg); }
+.registry-detail-gallery.is-scatter img:nth-child(2) { transform: rotate(4deg);  margin-left: 22px; }
+.registry-detail-gallery.is-scatter img:nth-child(3) { transform: rotate(-3deg); margin-right: 24px; }
+.registry-detail-gallery.is-scatter img:nth-child(4) { transform: rotate(6deg);  margin-left: 14px; }
+
+.registry-detail-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.registry-detail-actions .registry-view-btn,
+.registry-detail-actions .registry-mark-btn,
+.registry-detail-actions .registry-reserved-badge {
+  flex: 0 0 auto;
+  padding: 0.8rem 1.25rem;
+}
+
+/* Zoom a logo in the detail image to trim surrounding whitespace */
+.registry-detail-imgwrap.is-zoom .registry-detail-img {
+  transform: scale(1.55);
+}
+
+/* On small screens, stack: image on top, text below, full-width buttons */
+@media (max-width: 560px) {
+  .registry-detail-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "img"
+      "name"
+      "price"
+      "desc";
+  }
+
+  .registry-detail-imgwrap {
+    aspect-ratio: 4 / 3;
+    margin-bottom: 1rem;
+  }
+
+  .registry-detail-actions .registry-view-btn,
+  .registry-detail-actions .registry-mark-btn,
+  .registry-detail-actions .registry-reserved-badge {
+    flex: 1;
+    min-width: 140px;
+    text-align: center;
+  }
 }
 
 /* ---------- 15. RSVP Form ---------- */
@@ -2595,6 +3002,8 @@ body.map-fullscreen-open {
   color: var(--color-text-light);
   font-size: 0.9rem;
   margin-bottom: 2rem;
+  /* Span the full form width instead of the global paragraph max-width */
+  max-width: none;
 }
 
 /* Pin promo on confirmation */
@@ -2604,13 +3013,13 @@ body.map-fullscreen-open {
 }
 
 .pin-promo-text {
-  /* A gentle subhead (no card), with the CTA button below */
-  font-family: var(--font-serif);
-  font-size: 1.1rem;
-  font-weight: 400;
-  color: var(--color-heading);
+  /* Body-text style (not a serif heading), with the CTA button below */
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: var(--color-text-light);
   margin: 0 auto 1.25rem;
-  max-width: 340px;
+  max-width: 420px;
 }
 
 .pin-promo-btn {
@@ -2913,7 +3322,13 @@ body.map-fullscreen-open {
 
 /* Attendee list (confirmation screen) */
 .attendee-section {
-  margin-top: 1rem;
+  /* A distinct card, clearly separated from the thank-you / pin section above */
+  margin-top: 3.5rem;
+  padding: 2.25rem 1.75rem 2.5rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 }
 
 .attendee-list {

@@ -1,3 +1,12 @@
 # macOS system files (invisible clutter that Finder creates automatically)
 .DS_Store
 **/.DS_Store
+
+# Personal working files — NOT for the public website/repo
+# (invitation artwork, guest labels, planning drafts, unused photo folders)
+Invitations/
+Wedding 2027/
+save_the_date_labels.docx
+images/college/
+images/post college/
+images/tripod.jpg

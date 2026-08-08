@@ -8,11 +8,11 @@
   /* ---------- Configuration ---------- */
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMldY7OfwgI-AaEhLRxgqVW_Du_Z9YdANivvVzGfA7MkVMFaA_MkPbyMPYcqSW2SszOQ/exec';
   var MEAL_OPTIONS = [
-    { value: 'Filet Mignon',       description: 'Herb-crusted beef tenderloin with roasted garlic butter and seasonal vegetables' },
-    { value: 'Pan-Seared Chicken', description: 'Free-range chicken breast with lemon herb sauce and wild rice pilaf' },
-    { value: 'Grilled Salmon',     description: 'Atlantic salmon fillet with dill cream sauce and roasted asparagus' }
+    { value: 'Chicken',           description: 'Pan-seared chicken with a rich, cream sauce made with chicken stock, heavy cream, and sun-dried tomatoes' },
+    { value: 'Salmon',            description: '' },
+    { value: 'Vegetable Lasagna', description: '' }
   ];
-  var KIDS_MEAL = { value: "Kids' Meal", description: 'Chicken tenders with mac & cheese and fresh fruit' };
+  var KIDS_MEAL = { value: "Kids' Meal", description: '' };
   var MAX_PHOTO_SIZE = 10 * 1024 * 1024;
 
   /* ---------- State ---------- */
@@ -282,6 +282,25 @@
   function renderPartyMembers() {
     var container = document.getElementById('party-members');
 
+    // If anyone in the party is invited to the rehearsal dinner, show its
+    // details (pulled from the Timeline page) so guests know what they're
+    // choosing between.
+    var invitedToRehearsal = false;
+    for (var r = 0; r < state.partyMembers.length; r++) {
+      if (state.partyMembers[r].rehearsalDinner) { invitedToRehearsal = true; break; }
+    }
+    var step2desc = document.getElementById('step-2-desc');
+    if (step2desc) {
+      if (invitedToRehearsal) {
+        step2desc.innerHTML = 'You&rsquo;re invited to the rehearsal dinner on ' +
+          '<strong>Friday, July 23 at 5:30 PM</strong> at The Fish Hopper ' +
+          '(700 Cannery Row, Monterey). Let us know which events each guest can join.';
+        step2desc.style.display = '';
+      } else {
+        step2desc.style.display = 'none';
+      }
+    }
+
     // Header row with "Attendance" label
     var html = '<div class="party-member-row" style="border-bottom:none;padding-bottom:0;">' +
       '<span class="party-member-name"></span>' +
@@ -457,11 +476,13 @@
       for (var j = 0; j < options.length; j++) {
         var opt = options[j];
         var inputName = 'meal-' + m.guestId;
+        var descHtml = opt.description
+          ? '<span class="meal-option-description">' + opt.description + '</span>' : '';
         html += '<label class="meal-option">' +
           '<input type="radio" name="' + inputName + '" value="' + opt.value + '">' +
           '<span class="meal-option-text">' +
             '<span class="meal-option-header">' + opt.value + '</span>' +
-            '<span class="meal-option-description">' + opt.description + '</span>' +
+            descHtml +
           '</span>' +
           '</label>';
       }
