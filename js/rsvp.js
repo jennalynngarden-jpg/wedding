@@ -365,7 +365,7 @@
   function attendanceOptions(m) {
     if (m.rehearsalDinner) {
       return [
-        { value: 'wedding-and-rehearsal', label: 'Wedding & rehearsal' },
+        { value: 'wedding-and-rehearsal', label: 'Wedding & rehearsal dinner' },
         { value: 'wedding-only', label: 'Wedding only' },
         { value: 'no', label: "Can't come" }
       ];

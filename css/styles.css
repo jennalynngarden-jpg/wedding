@@ -2615,6 +2615,9 @@ body.map-fullscreen-open {
 /* Pinned footer with the CTA, plus a fade above hinting the text scrolls */
 .registry-detail-footer {
   position: relative;
+  /* Sit above the scrolling content — including the scattered photo pile,
+     which is raised with its own z-index — so the fade covers the photos too */
+  z-index: 5;
   flex-shrink: 0;
   padding: 1rem 1.75rem 1.5rem;
   background: #fff;
@@ -2803,6 +2806,42 @@ body.map-fullscreen-open {
   .registry-detail-imgwrap {
     aspect-ratio: 4 / 3;
     margin-bottom: 1rem;
+  }
+
+  /* Space between the image/photos and the heading + text below them */
+  .registry-detail-media {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Scattered photos: on phones, arrange them in a 2-across square cluster
+     instead of one tall vertical line — but keep the tilted, framed look. */
+  .registry-detail-gallery.is-scatter {
+    display: flex;
+    flex-direction: row;   /* override the base column so photos sit side by side */
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    /* Pull the cluster up into the empty space beneath the logo */
+    margin-top: -3.5rem;
+    padding: 0.25rem 0.25rem 0.75rem;
+  }
+
+  .registry-detail-gallery.is-scatter img {
+    /* ~45% width (with a higher cap) guarantees exactly two per row, so four
+       photos form a 2x2 square and three become two-over-one */
+    width: 45%;
+    max-width: 190px;
+  }
+
+  /* Reset the desktop vertical-pile nudges so the 2-column grid sits evenly;
+     a small negative margin keeps a bit of casual overlap. The tilt rotations
+     from the base rules are left untouched. */
+  .registry-detail-gallery.is-scatter img:nth-child(1),
+  .registry-detail-gallery.is-scatter img:nth-child(2),
+  .registry-detail-gallery.is-scatter img:nth-child(3),
+  .registry-detail-gallery.is-scatter img:nth-child(4) {
+    margin: -6px;
   }
 
   .registry-detail-actions .registry-view-btn,
@@ -3251,7 +3290,8 @@ body.map-fullscreen-open {
 /* ---------- Custom attendance dropdown ---------- */
 .attend-dd {
   position: relative;
-  min-width: 190px;
+  /* Wide enough for the longest label ("Wedding & rehearsal dinner") on one line */
+  min-width: 240px;
   flex-shrink: 0;
 }
 
@@ -3277,6 +3317,17 @@ body.map-fullscreen-open {
 .attend-dd-trigger:hover,
 .attend-dd.open .attend-dd-trigger {
   border-color: var(--color-sage);
+}
+
+/* Keep the selected label on a single line so the box doesn't grow taller */
+.attend-dd-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attend-dd-option .attend-dd-label {
+  white-space: nowrap;
 }
 
 /* Chevron drawn as a rotated square (crisp, matches the site's other carets) */
