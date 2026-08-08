@@ -133,6 +133,19 @@
     var input = document.getElementById('guest-search');
     if (!input) return;
 
+    // On phones, when the field is tapped, scroll it up near the top of the
+    // screen so the results tray that drops below it stays fully on-screen
+    // (and isn't hidden behind the on-screen keyboard). We wait a beat for the
+    // keyboard to start opening before scrolling.
+    input.addEventListener('focus', function () {
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        setTimeout(function () {
+          var field = input.closest('.form-group') || input;
+          field.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
+    });
+
     input.addEventListener('input', function () {
       clearTimeout(searchTimeout);
       var query = this.value.trim();

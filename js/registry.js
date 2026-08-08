@@ -66,7 +66,7 @@
   /* ---------- Honeymoon fund (always the first card in the grid) ---------- */
   var HONEYMOON_FUND = {
     name: 'Honeymoon Fund',
-    description: "Jenna and Liam aren't sure where they’ll go on our honeymoon and " +
+    description: "Jenna and Liam aren't sure where they’ll go on their honeymoon and " +
       "probably won't take it right away, but they’re setting aside some funds for it. " +
       'If you have destination suggestions or travel advice, feel free to send it along!',
     link: 'https://venmo.com/u/jennagarden',

@@ -2625,8 +2625,10 @@ body.map-fullscreen-open {
   position: absolute;
   left: 0;
   right: 0;
-  top: -32px;
-  height: 32px;
+  /* Tall, gradual fade so scrolling content — especially the photo pile —
+     dissolves smoothly into the footer instead of cutting off hard */
+  top: -72px;
+  height: 72px;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
   pointer-events: none;
 }
@@ -3072,14 +3074,45 @@ body.map-fullscreen-open {
 }
 
 /* Search results */
+/* Anchor the floating results tray to the search field */
+#step-1 .form-group {
+  position: relative;
+}
+
+/* Search results appear in a floating dropdown tray overlaid on the page —
+   making it clear you're picking from a preset guest list. */
 .search-results {
-  margin-top: 0.5rem;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 0.4rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.13);
+  overflow: hidden;          /* keep rows within the rounded corners */
+  max-height: 320px;
+  overflow-y: auto;
+  /* A subtle open animation so the tray reads as "dropping down" */
+  animation: search-tray-in 0.18s ease both;
+}
+
+/* Hide the tray entirely when there's nothing to show (no empty box) */
+.search-results:empty {
+  display: none;
+}
+
+@keyframes search-tray-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .search-result-item {
   display: block;
   width: 100%;
-  padding: 0.75rem 0;
+  padding: 0.85rem 1rem;
   border: none;
   border-bottom: 1px solid var(--color-border);
   background: none;
@@ -3088,11 +3121,18 @@ body.map-fullscreen-open {
   color: var(--color-heading);
   cursor: pointer;
   text-align: left;
-  transition: color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.search-result-item:hover {
-  color: var(--color-sage);
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover,
+.search-result-item:focus {
+  background: var(--color-sage-light);
+  color: var(--color-sage-hover);
+  outline: none;
 }
 
 .no-results,
@@ -3101,7 +3141,21 @@ body.map-fullscreen-open {
   color: var(--color-text-light);
   font-style: italic;
   text-align: center;
+}
+
+/* Standalone messages (no matches / connection error) get their own padding */
+.no-results {
+  padding: 1rem;
+}
+
+/* The loader caption sits inside the flower loader, so keep it tight */
+.search-loading {
   padding: 0.25rem 0 0;
+}
+
+/* Give the loader comfortable room inside the tray */
+.search-results .floral-loader {
+  padding: 1.25rem 1rem;
 }
 
 /* Floral line-art loader — a 5-petal flower that draws itself petal by petal
@@ -4018,7 +4072,9 @@ body.map-fullscreen-open {
 /* ---------- 18. Responsive: Mobile ---------- */
 @media (max-width: 480px) {
   :root {
-    --section-padding: 3rem 1rem;
+    /* 1.25rem sides (matches the tablet breakpoint) so text on phones has
+       comfortable breathing room and never sits flush to the screen edges */
+    --section-padding: 3rem 1.25rem;
   }
 
   .site-header {
