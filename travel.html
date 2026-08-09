@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel | Jenna & Liam</title>
+  <title>Travel &amp; FAQs | Jenna & Liam</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css?v=68">
+  <link rel="stylesheet" href="css/styles.css?v=71">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
         <li><a href="index.html">Home</a></li>
         <li><a href="our-story.html">Our Story</a></li>
         <li><a href="timeline.html">Timeline</a></li>
-        <li><a href="travel.html" class="nav-active">Travel</a></li>
+        <li><a href="travel.html" class="nav-active">Travel &amp; FAQs</a></li>
         <li><a href="things-to-do.html">Things to Do</a></li>
         <li><a href="photos.html">Photos</a></li>
         <li><a href="wedding-party.html">Wedding Party</a></li>
@@ -37,7 +37,7 @@
 
   <main>
     <section class="content-section">
-      <h2 class="section-heading">Travel</h2>
+      <h2 class="section-heading">Travel &amp; FAQs</h2>
       <div class="section-divider"></div>
 
       <!-- Map filter buttons -->
@@ -75,6 +75,7 @@
           <button id="add-pin-btn" class="add-pin-btn">+ Add your pin</button>
           <div id="pin-form" class="pin-form">
             <p class="pin-form-header">Show us where you're traveling from!</p>
+            <p class="pin-form-subheader">Add your name and then drop a pin on the map to show other guests where you're coming from.</p>
             <input type="text" id="pin-name" placeholder="Your name" maxlength="50">
             <div class="pin-form-buttons">
               <button id="pin-cancel" class="pin-cancel-btn">Cancel</button>
@@ -130,28 +131,24 @@
         <div class="travel-card">
           <h3>Hotels</h3>
           <div class="travel-item">
-            <p class="travel-name">Hotel Pacific</p>
+            <p class="travel-name"><a href="https://www.hotelpacific.com/" target="_blank" rel="noopener">Hotel Pacific</a></p>
             <p>300 Pacific Street, Monterey</p>
           </div>
           <div class="travel-item">
-            <p class="travel-name">Portola Hotel <span class="ampersand">&amp;</span> Spa</p>
+            <p class="travel-name"><a href="https://www.portolahotel.com/" target="_blank" rel="noopener">Portola Hotel <span class="ampersand">&amp;</span> Spa</a></p>
             <p>Two Portola Plaza, Monterey</p>
           </div>
           <div class="travel-item">
-            <p class="travel-name">Monterey Plaza Hotel</p>
+            <p class="travel-name"><a href="https://montereyplazahotel.com/" target="_blank" rel="noopener">Monterey Plaza Hotel</a></p>
             <p>400 Cannery Row, Monterey</p>
           </div>
           <div class="travel-item">
-            <p class="travel-name">InterContinental The Clement</p>
+            <p class="travel-name"><a href="https://www.ictheclementmonterey.com/" target="_blank" rel="noopener">InterContinental The Clement</a></p>
             <p>750 Cannery Row, Monterey</p>
           </div>
           <div class="travel-item">
-            <p class="travel-name">Hyatt Regency Monterey</p>
+            <p class="travel-name"><a href="https://www.hyatt.com/hyatt-regency/en-US/mrydm-hyatt-regency-monterey-hotel-and-spa-on-del-monte-golf-course" target="_blank" rel="noopener">Hyatt Regency Monterey</a></p>
             <p>1 Old Golf Course Rd, Monterey</p>
-          </div>
-          <div class="travel-item">
-            <p class="travel-name">Old Monterey Inn</p>
-            <p>500 Martin St, Monterey</p>
           </div>
         </div>
 
@@ -190,6 +187,17 @@
         </div>
 
         <div class="faq-item">
+          <h3 class="faq-question">What's the attire?</h3>
+          <p class="faq-answer">We'd like folks to aim for cocktail or semi-formal attire. Keep in mind that July evenings can be cooler so definitely bring a jacket or wrap. If you're looking for inspiration, our color palette includes sage green, warm tan, earthy brown, and forest green, but there's no pressure to match. Please just wear whatever makes you feel your best!</p>
+          <div class="palette-swatches" aria-label="Wedding color palette">
+            <span class="palette-swatch" style="background:#7a9a6d;" title="Sage green"></span>
+            <span class="palette-swatch" style="background:#b8a88a;" title="Warm tan"></span>
+            <span class="palette-swatch" style="background:#8b7355;" title="Earthy brown"></span>
+            <span class="palette-swatch" style="background:#2c3e2d;" title="Forest green"></span>
+          </div>
+        </div>
+
+        <div class="faq-item">
           <h3 class="faq-question">Is there parking at the venue?</h3>
           <p class="faq-answer">Yes! Fairview Laguna Seca has free parking on site.</p>
         </div>
@@ -218,6 +226,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/main.js?v=4"></script>
-  <script src="js/travel-map.js?v=6"></script>
+  <script src="js/travel-map.js?v=8"></script>
 </body>
 </html>

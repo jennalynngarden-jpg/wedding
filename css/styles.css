@@ -583,6 +583,19 @@ p {
   margin-bottom: 0.1rem;
 }
 
+/* Linked hotel names: keep the heading look, add a subtle underline on hover */
+.travel-name a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.travel-name a:hover {
+  color: var(--color-sage-hover);
+  border-bottom-color: var(--color-sage);
+}
+
 .travel-item {
   margin-bottom: 1rem;
 }
@@ -622,6 +635,21 @@ p {
   max-width: none;
   margin-left: 0;
   margin-right: 0;
+}
+
+/* Little color-palette circles under the attire answer */
+.palette-swatches {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.palette-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  /* Soft ring + shadow so the pale tan swatch still reads against the page */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 /* ---------- 10b. Travel Map ---------- */
@@ -836,7 +864,18 @@ p {
   font-weight: 400;
   color: var(--color-heading);
   text-align: center;
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.4rem 0;
+  max-width: none;
+}
+
+.pin-form-subheader {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 300;
+  color: var(--color-text-light);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 0.85rem 0;
   max-width: none;
 }
 
@@ -1609,8 +1648,9 @@ body.map-fullscreen-open {
 }
 
 .photo-carousel-slide img {
-  /* Let each photo keep its natural shape; just cap its size so nothing crops. */
-  max-width: 100%;
+  /* Let each photo keep its natural shape; cap its size so nothing crops, and
+     leave side room so the drop shadow isn't clipped by the frame's edges. */
+  max-width: calc(100% - 6rem);
   max-height: 600px;
   width: auto;
   height: auto;
@@ -1618,10 +1658,14 @@ body.map-fullscreen-open {
   vertical-align: middle;
   /* Round each photo's own corners so portrait photos match the landscape ones */
   border-radius: 8px;
-  /* Super soft, diffuse drop shadow so photos gently float off the page */
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   /* Tappable — opens the full-screen viewer */
   cursor: pointer;
+}
+
+/* Only the current slide casts a shadow, so neighbouring photos' shadows can't
+   bleed in at the edges. Soft, diffuse shadow so photos gently float. */
+.photo-carousel-slide.is-current img {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .photo-carousel-arrow {
@@ -4225,8 +4269,10 @@ body.map-fullscreen-open {
 
   /* Photo carousels on mobile */
   .photo-carousel-slide img {
-    /* Cap height smaller on phones; shape still preserved */
+    /* Cap height smaller on phones; shape still preserved. Less side room than
+       desktop so photos stay a comfortable size on small screens. */
     max-height: 380px;
+    max-width: calc(100% - 2.5rem);
   }
 
   .photo-carousel-arrow {

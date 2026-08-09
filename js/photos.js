@@ -40,6 +40,9 @@ function setupPhotoCarousel(carousel) {
 
   var dots = dotsContainer.querySelectorAll('.photo-carousel-dot');
 
+  // Mark the first slide as current so only it casts a shadow to start
+  if (slides[0]) slides[0].classList.add('is-current');
+
   // Resize the frame to match the current photo's height, so spacing under the
   // heading stays consistent and the frame hugs each photo (height can "jump").
   function updateHeight() {
@@ -59,6 +62,11 @@ function setupPhotoCarousel(carousel) {
     track.style.transform = 'translateX(-' + (currentIndex * 100) + '%)';
     for (var j = 0; j < dots.length; j++) {
       dots[j].classList.toggle('active', j === currentIndex);
+    }
+    // Only the current slide casts a shadow, so neighbouring photos' shadows
+    // can't bleed into view at the edges.
+    for (var k = 0; k < slides.length; k++) {
+      slides[k].classList.toggle('is-current', k === currentIndex);
     }
     updateHeight();
   }

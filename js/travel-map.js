@@ -64,14 +64,6 @@ document.addEventListener('DOMContentLoaded', function () {
       distance: '~15 min drive to venue'
     },
     {
-      name: 'Old Monterey Inn',
-      category: 'hotel',
-      lat: 36.5935,
-      lng: -121.9006,
-      address: '500 Martin St, Monterey',
-      distance: '~15 min drive to venue'
-    },
-    {
       name: 'Monterey Regional Airport (MRY)',
       category: 'airport',
       lat: 36.5870,
@@ -384,6 +376,8 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ---------- Add a guest marker to the map ---------- */
   function addGuestMarker(name, lat, lng, pinId, city) {
     var marker = L.marker([lat, lng], { icon: createIcon('guest') });
+    // Name shows on hover (tooltip); click opens the full popup with city + remove
+    marker.bindTooltip(name, { direction: 'top', offset: [0, -6] });
     marker.bindPopup(guestPopupContent(name, city, pinId), { offset: [0, -6] });
     marker.pinId = pinId;
     marker.city = city;
@@ -747,6 +741,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // Auto-open pin form if URL has ?addpin=true (linked from RSVP confirmation)
   var urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('addpin') === 'true' && addPinBtn && pinForm) {
+    // Coming from the RSVP flow to drop a pin: show the guests view on purpose
+    // (this is the one case where we intentionally default to "Our guests").
+    activeCategories.guest = true;
+    activeCategories.hotel = false;
+    activeCategories.airport = false;
+    activeCategories.event = false;
+    updateMap();
+
     // Scroll to map area
     var mapContainer = document.querySelector('.map-container');
     if (mapContainer) {
