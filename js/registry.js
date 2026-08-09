@@ -37,6 +37,16 @@
   // Donation-record modal
   var donationModal = document.getElementById('donation-modal');
   var donationTitle = document.getElementById('donation-title');
+  var donationHelp = document.getElementById('donation-help');
+  var activeDonationLabel = 'Record donation';  // reset target for the confirm button
+
+  // Payment method chooser (Venmo or Zelle) for gifts that come straight to us
+  var paymentModal = document.getElementById('payment-modal');
+  var paymentTitle = document.getElementById('payment-title');
+  var paymentHelp = document.getElementById('payment-help');
+  var paymentVenmoLink = document.getElementById('payment-venmo-link');
+  var paymentRecordBtn = document.getElementById('payment-record-btn');
+  var activePaymentItem = null;   // the fund/cause being sent money
   var donationError = document.getElementById('donation-error');
   var donorName = document.getElementById('donor-name');
   var donorAmount = document.getElementById('donor-amount');
@@ -72,7 +82,8 @@
     link: 'https://venmo.com/u/jennagarden',
     image: 'images/oak-crest.png',
     isCause: true,
-    cta: 'Contribute via Venmo'
+    isFund: true,   // a gift/contribution, not a charity "donation"
+    cta: 'Contribute'
   };
 
   function buildFundCard() {
@@ -365,11 +376,20 @@
       detailImgwrap.style.display = '';
     }
 
+    // Gifts that come straight to us (the fund, or a Venmo link) open a
+    // Venmo/Zelle chooser; charities link out to their own donate page.
+    var isDirectGift = !!item.isCause && (!!item.isFund || /venmo\.com/i.test(item.link || ''));
+
     // Build the right actions for this card
     var html = '';
     if (item.isCause) {
-      html = '<a class="registry-mark-btn" id="detail-donate-btn" href="' + esc(item.link) +
-        '" target="_blank" rel="noopener">' + esc(item.cta || 'Contribute') + '</a>';
+      if (isDirectGift) {
+        html = '<button type="button" class="registry-mark-btn" id="detail-donate-btn">' +
+          esc(item.cta || 'Contribute') + '</button>';
+      } else {
+        html = '<a class="registry-mark-btn" id="detail-donate-btn" href="' + esc(item.link) +
+          '" target="_blank" rel="noopener">' + esc(item.cta || 'Contribute') + '</a>';
+      }
     } else {
       html = '<a class="registry-view-btn" href="' + esc(item.link) +
         '" target="_blank" rel="noopener">View item</a>';
@@ -389,16 +409,22 @@
       });
     }
 
-    // For causes: the donate link opens in a new tab, and we follow up with a
-    // modal so guests can (optionally) record their donation for a thank-you.
     var donateBtn = document.getElementById('detail-donate-btn');
     if (donateBtn) {
       donateBtn.addEventListener('click', function () {
-        // Let the link open the charity in a new tab, then show the record modal
-        setTimeout(function () {
+        if (isDirectGift) {
+          // Money comes straight to us: offer a Venmo/Zelle chooser (no external
+          // link to follow), then the record step happens from there.
           closeDetail();
-          openDonationModal(item.name);
-        }, 200);
+          openPaymentModal(item);
+        } else {
+          // Charity: the link opens their donate page in a new tab; follow up
+          // with the record-donation modal for a thank-you.
+          setTimeout(function () {
+            closeDetail();
+            openDonationModal(item.name, false, false);
+          }, 200);
+        }
       });
     }
 
@@ -432,15 +458,29 @@
   }
 
   /* ---------- Donation-record modal ---------- */
-  function openDonationModal(charity) {
+  function openDonationModal(charity, isFund, hideAmount) {
     activeCharity = charity;
-    donationTitle.textContent = 'Record your donation to ' + charity;
+    // Hide the amount field when the money comes straight to us (honeymoon
+    // fund + Venmo-based gifts like ALA) — the amount is redundant there.
+    var amountGroup = donorAmount.closest('.form-group');
+    if (amountGroup) amountGroup.style.display = hideAmount ? 'none' : '';
+    // The honeymoon fund is a gift to us, not a charity donation — soften the
+    // wording so it doesn't read like a tax-deductible donation.
+    if (isFund) {
+      donationTitle.textContent = 'Let us know about your gift';
+      donationHelp.textContent = 'If you sent a gift to our honeymoon fund, feel free to let us know here so we can send you a proper thank you. This is completely optional.';
+      activeDonationLabel = 'Record gift';
+    } else {
+      donationTitle.textContent = 'Record your donation to ' + charity;
+      donationHelp.textContent = 'If you donated, feel free to let us know here so we can send you a proper thank you. This is completely optional.';
+      activeDonationLabel = 'Record donation';
+    }
     donationError.textContent = '';
     donorName.value = '';
     donorAmount.value = '';
     donorNote.value = '';
     donationConfirm.disabled = false;
-    donationConfirm.textContent = 'Record donation';
+    donationConfirm.textContent = activeDonationLabel;
     donationModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     donorName.focus();
@@ -450,6 +490,41 @@
     donationModal.style.display = 'none';
     document.body.style.overflow = '';
     activeCharity = null;
+  }
+
+  /* ---------- Payment method chooser (Venmo or Zelle) ---------- */
+  function openPaymentModal(item) {
+    activePaymentItem = item;
+    // Venmo opens the same handle we send money to
+    paymentVenmoLink.href = item.link || 'https://venmo.com/u/jennagarden';
+
+    paymentHelp.textContent = 'Choose whichever is easiest!';
+    if (item.isFund) {
+      paymentTitle.textContent = 'Send your gift';
+      paymentRecordBtn.textContent = 'Let us know about your gift';
+    } else {
+      paymentTitle.textContent = 'Send your donation';
+      paymentRecordBtn.textContent = 'Let us know about your donation';
+    }
+
+    // Reset the Zelle copy button label in case it was left as "Copied!"
+    var zelleCopy = document.getElementById('payment-zelle-copy');
+    if (zelleCopy) zelleCopy.textContent = 'Copy number';
+
+    paymentModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePaymentModal() {
+    paymentModal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // From the payment chooser, move on to the optional "let us know" step
+  function paymentToRecord() {
+    var item = activePaymentItem;
+    closePaymentModal();
+    if (item) openDonationModal(item.name, !!item.isFund, true);
   }
 
   function submitDonation() {
@@ -480,7 +555,7 @@
         } else {
           donationError.textContent = 'Something went wrong. Please try again.';
           donationConfirm.disabled = false;
-          donationConfirm.textContent = 'Record donation';
+          donationConfirm.textContent = activeDonationLabel;
         }
       })
       .catch(function () {
@@ -507,9 +582,32 @@
     });
     donationConfirm.addEventListener('click', submitDonation);
 
+    // Payment chooser (Venmo / Zelle)
+    document.getElementById('payment-close').addEventListener('click', closePaymentModal);
+    paymentModal.addEventListener('click', function (e) {
+      if (e.target === paymentModal) closePaymentModal();
+    });
+    paymentRecordBtn.addEventListener('click', paymentToRecord);
+    // Opening Venmo still leads to the "let us know" step so it isn't skipped
+    paymentVenmoLink.addEventListener('click', function () {
+      setTimeout(paymentToRecord, 300);
+    });
+    var zelleCopy = document.getElementById('payment-zelle-copy');
+    if (zelleCopy) {
+      zelleCopy.addEventListener('click', function () {
+        var num = '(831) 710-0310';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(num).then(function () {
+            zelleCopy.textContent = 'Copied!';
+          }).catch(function () {});
+        }
+      });
+    }
+
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       if (modal.style.display === 'flex') closeModal();
+      else if (paymentModal.style.display === 'flex') closePaymentModal();
       else if (donationModal.style.display === 'flex') closeDonationModal();
       else if (detailModal.style.display === 'flex') closeDetail();
     });

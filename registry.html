@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=67">
+  <link rel="stylesheet" href="css/styles.css?v=68">
 </head>
 <body>
 
@@ -62,7 +62,7 @@
         <div class="registry-item registry-item--cause"
              data-name="LEMO Foundation"
              data-desc="The LEMO (Liahona Motu) Foundation gives under-resourced Bay Area youth the sports, mentorship, and education programs they need to thrive, from athletic training to college support. Donations go directly to LEMO through their website."
-             data-why="When she was in middle school, one of Jenna's neighbors noticed her practicing volleyball in her yard and generously covered her dues for her to play club volleyball on the same team as his daughter. Because it was so much fun, for subsequent seasons Jenna worked to raise money (mostly detailing cars and selling baked goods) to cover her dues and learned how to advocate for herself by contacting club directors about financial aid.||Being able to play club volleyball changed her life by making her a strong enough player to continue to play in high school, college, and beyond. It also helped build her confidence and teach her how to manage her time. Being able to help give other young players that same opportunity would mean the world to her."
+             data-why="When she was in middle school, one of Jenna's neighbors noticed her practicing volleyball in her yard and generously covered her dues for her to play club volleyball on the same team as his daughter. Because it was so much fun, for subsequent seasons Jenna raised money to cover her dues and learned how to advocate for herself by contacting club directors about financial aid.||Being able to play club volleyball changed her life by making her a strong enough player to continue to play in high school, college, and beyond. It also helped build her confidence and taught her how to manage her time. Being able to help give other young players that same opportunity would mean the world to her."
              data-link="https://www.lemou.org/get-involved"
              data-cta="Donate to LEMO"
              data-image="images/lemo-logo.jpg"
@@ -112,10 +112,10 @@
         </div>
         <div class="registry-item registry-item--cause"
              data-name="American Legion Auxiliary Unit 589"
-             data-desc="A Salinas organization serving veterans, their families, and the community since 1942, from honoring veterans to funding scholarships. They don't take donations online, so send your gift through our Venmo with &quot;Unit 589&quot; in the note, and we'll pass along every dollar."
+             data-desc="A Salinas organization serving veterans, their families, and the community since 1942, from honoring veterans to funding scholarships. They don't take donations online, so send your gift to Jenna (via Venmo or Zelle) with &quot;Unit 589&quot; in the note, and we'll pass along every dollar."
              data-why="Jenna&rsquo;s late grandfather Don served in the Navy, and the American Legion Auxiliary provided scholarships to both Jenna and her sister Lacey to help cover their college expenses. The Garden kids have also entered (and often won) their Poppy Poster art contest every year. The ladies at the Salinas chapter of the ALA work very hard to fundraise for the scholarships that they give out every year."
              data-link="https://venmo.com/u/jennagarden"
-             data-cta="Give via our Venmo"
+             data-cta="Give a gift"
              data-image="images/legion-auxiliary-logo.png"
              data-gallery="images/ala-jenna-scholarship.jpg,images/ala-lacey.jpg,images/ala-poppy-poster.jpg"
              data-gallery-style="scatter">
@@ -186,7 +186,7 @@
     <div class="registry-modal">
       <button class="registry-modal-close" id="donation-close" aria-label="Close">&times;</button>
       <h3 class="registry-modal-title registry-modal-title--purchase" id="donation-title"></h3>
-      <p class="registry-modal-help">If you donated, feel free to let us know here so we can send you a proper thank you. This is completely optional.</p>
+      <p class="registry-modal-help" id="donation-help">If you donated, feel free to let us know here so we can send you a proper thank you. This is completely optional.</p>
       <div class="form-group">
         <label for="donor-name">Your name</label>
         <input type="text" id="donor-name" placeholder="First and last name" autocomplete="name">
@@ -204,6 +204,34 @@
     </div>
   </div>
 
+  <!-- Payment method chooser (Venmo or Zelle) for gifts that come to us -->
+  <div class="registry-modal-overlay" id="payment-modal" style="display:none;">
+    <div class="registry-modal">
+      <button class="registry-modal-close" id="payment-close" aria-label="Close">&times;</button>
+      <h3 class="registry-modal-title registry-modal-title--purchase" id="payment-title">Send your gift</h3>
+      <p class="registry-modal-help" id="payment-help">Choose whichever is easiest &mdash; it comes straight to Jenna either way.</p>
+
+      <div class="payment-options">
+        <div class="payment-option">
+          <div class="payment-option-info">
+            <span class="payment-option-name">Venmo</span>
+            <span class="payment-option-detail">@jennagarden</span>
+          </div>
+          <a class="payment-option-btn" id="payment-venmo-link" href="https://venmo.com/u/jennagarden" target="_blank" rel="noopener">Open Venmo</a>
+        </div>
+        <div class="payment-option">
+          <div class="payment-option-info">
+            <span class="payment-option-name">Zelle</span>
+            <span class="payment-option-detail">(831) 710-0310</span>
+          </div>
+          <button type="button" class="payment-option-btn" id="payment-zelle-copy">Copy number</button>
+        </div>
+      </div>
+
+      <button class="registry-confirm-btn" id="payment-record-btn">Let us know about your gift</button>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="crest crest--small">
       <img class="oak-crest oak-crest--small" src="images/oak-crest.png" alt="Oak leaf crest">
@@ -213,6 +241,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/registry.js?v=17"></script>
+  <script src="js/registry.js?v=21"></script>
 </body>
 </html>
