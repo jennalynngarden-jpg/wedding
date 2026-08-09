@@ -430,6 +430,25 @@
 
     detailModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // Only show the footer's "more below" fade when the content actually
+    // scrolls — otherwise it just dims the last line for no reason.
+    updateDetailFade();
+    requestAnimationFrame(updateDetailFade);
+    var detailImgs = detailModal.querySelectorAll('img');
+    for (var di = 0; di < detailImgs.length; di++) {
+      if (!detailImgs[di].complete) {
+        detailImgs[di].addEventListener('load', updateDetailFade);
+      }
+    }
+  }
+
+  function updateDetailFade() {
+    var scroll = detailModal.querySelector('.registry-detail-scroll');
+    var box = detailModal.querySelector('.registry-detail');
+    if (!scroll || !box) return;
+    var scrollable = scroll.scrollHeight > scroll.clientHeight + 2;
+    box.classList.toggle('is-scrollable', scrollable);
   }
 
   function closeDetail() {
@@ -501,10 +520,10 @@
     paymentHelp.textContent = 'Choose whichever is easiest!';
     if (item.isFund) {
       paymentTitle.textContent = 'Send your gift';
-      paymentRecordBtn.textContent = 'Let us know about your gift';
+      paymentRecordBtn.textContent = 'Record your gift';
     } else {
       paymentTitle.textContent = 'Send your donation';
-      paymentRecordBtn.textContent = 'Let us know about your donation';
+      paymentRecordBtn.textContent = 'Record your donation';
     }
 
     // Reset the Zelle copy button label in case it was left as "Copied!"

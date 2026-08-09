@@ -129,9 +129,11 @@ function loadGuestPhotos() {
           slide.className = 'photo-carousel-slide';
 
           var img = document.createElement('img');
-          // Build a reliable Google Drive image link from the file's ID.
-          // (The older "uc?export=view" format often fails to load.)
-          img.src = 'https://drive.google.com/thumbnail?id=' + photo.id + '&sz=w1600';
+          // Load via Google's image CDN (lh3), which is the most reliable way to
+          // hotlink a Drive image. The "drive.google.com/thumbnail" and older
+          // "uc?export=view" endpoints intermittently return a non-image page
+          // (esp. when several load at once), leaving a blank slide.
+          img.src = 'https://lh3.googleusercontent.com/d/' + photo.id + '=w1600';
           // We don't capture the guest's name on upload, so use a generic label
           // rather than the raw filename (e.g. "benihana.jpg").
           img.alt = 'Photo shared by a wedding guest';

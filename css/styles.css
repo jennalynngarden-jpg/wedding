@@ -2736,6 +2736,12 @@ body.map-fullscreen-open {
   height: 72px;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
   pointer-events: none;
+  /* Only shown when the content actually scrolls (toggled in JS) */
+  display: none;
+}
+
+.registry-detail.is-scrollable .registry-detail-footer::before {
+  display: block;
 }
 
 /* Left column: the main image plus any gallery photos, stacked */
