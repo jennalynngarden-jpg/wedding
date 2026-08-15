@@ -160,6 +160,9 @@
       .then(function (data) {
         var items = data.items || [];
         statusEl.style.display = 'none';
+        // Shuffle the gift items so visitors don't always see the same order
+        // (the Honeymoon Fund stays pinned first, added just below).
+        shuffle(items);
         // Fund card first, then the gift items — all animate in together
         addFundCard();
         for (var i = 0; i < items.length; i++) {
@@ -174,6 +177,8 @@
           card.style.animationDelay = ((i + 1) * 0.07) + 's';
           grid.appendChild(card);
         }
+        // Wire the arrows now that the cards exist
+        wireCarousel('registry-grid', 'registry-prev', 'registry-next');
       })
       .catch(function () {
         // Even if the gift list fails, still show the fund card (it's local)
@@ -281,11 +286,27 @@
     wireCausesCarousel();
   }
 
+  /* ---------- Shuffle an array in place (Fisher–Yates) ---------- */
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = tmp;
+    }
+    return arr;
+  }
+
   /* ---------- Causes carousel arrows ---------- */
   function wireCausesCarousel() {
-    var track = document.getElementById('causes-grid');
-    var prev = document.getElementById('causes-prev');
-    var next = document.getElementById('causes-next');
+    wireCarousel('causes-grid', 'causes-prev', 'causes-next');
+  }
+
+  /* ---------- Horizontal carousel arrows (shared) ---------- */
+  function wireCarousel(trackId, prevId, nextId) {
+    var track = document.getElementById(trackId);
+    var prev = document.getElementById(prevId);
+    var next = document.getElementById(nextId);
     if (!track || !prev || !next) return;
 
     function scrollByCard(dir) {

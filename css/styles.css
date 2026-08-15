@@ -875,8 +875,9 @@ p {
   color: var(--color-text-light);
   text-align: center;
   line-height: 1.5;
-  margin: 0 0 0.85rem 0;
-  max-width: none;
+  /* Keep it narrow so it wraps to ~2 lines instead of one long line */
+  max-width: 380px;
+  margin: 0 auto 0.85rem;
 }
 
 .pin-form input[type="text"] {
@@ -1406,6 +1407,86 @@ body.map-fullscreen-open {
     font-size: 0.78rem;
     padding: 0.55rem 1rem;
   }
+}
+
+/* On phones, the "add your pin" form slides up as a bottom sheet — easier to
+   reach and read than a small floating box on the map. */
+@media (max-width: 768px) {
+  /* Lift the overlay (and its sheet) above the scrim while the form is open. */
+  .pin-overlay:has(.pin-form.active) {
+    z-index: 2000;
+  }
+
+  /* Scrim: gray out the whole page behind the sheet. Anchored to <html> (not
+     <body>, which is overflow-clipped and would trap the fixed layer) so it
+     always covers the full viewport — nav and heading included. */
+  html:has(.pin-form.active)::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1500;
+    animation: pin-scrim-fade 0.3s ease;
+  }
+
+  .pin-form.active {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    border: none;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.22);
+    /* Extra top room for the grabber handle; safe-area padding at the bottom */
+    padding: 1.6rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    z-index: 2000;
+    animation: pin-sheet-up 0.3s ease;
+  }
+
+  /* Little grabber handle at the top of the sheet */
+  .pin-form.active::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+  }
+
+  .pin-form-subheader {
+    max-width: none;
+  }
+
+  /* Comfortable, evenly-split buttons in the sheet */
+  .pin-form-buttons {
+    justify-content: stretch;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+  }
+
+  .pin-form-buttons .pin-cancel-btn,
+  .pin-form-buttons .pin-confirm-btn {
+    flex: 1;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
+@keyframes pin-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@keyframes pin-scrim-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ---------- 11. Things to Do ---------- */
@@ -2240,9 +2321,11 @@ body.map-fullscreen-open {
   }
 }
 
-/* Causes render as a horizontal carousel: 3 cards visible, scroll for more.
-   (.registry-grid.causes-grid beats the base .registry-grid display:grid) */
-.registry-grid.causes-grid {
+/* Causes AND registry items render as a horizontal carousel: 3 cards visible,
+   scroll for more. (.registry-grid.causes-grid / .items-scroll beat the base
+   .registry-grid display:grid) */
+.registry-grid.causes-grid,
+.registry-grid.items-scroll {
   display: flex;
   gap: 1.75rem;
   margin-top: 1.5rem;
@@ -2256,11 +2339,13 @@ body.map-fullscreen-open {
   padding-bottom: 0.5rem;
 }
 
-.registry-grid.causes-grid::-webkit-scrollbar {
+.registry-grid.causes-grid::-webkit-scrollbar,
+.registry-grid.items-scroll::-webkit-scrollbar {
   display: none;
 }
 
-.causes-grid .registry-item {
+.causes-grid .registry-item,
+.items-scroll .registry-item {
   /* Three cards across; the rest are reachable by scrolling */
   flex: 0 0 calc((100% - 2 * 1.75rem) / 3);
   scroll-snap-align: start;
@@ -2268,7 +2353,8 @@ body.map-fullscreen-open {
 
 /* On phones, show ~1 card at a time so it's comfortably swipeable */
 @media (max-width: 700px) {
-  .causes-grid .registry-item {
+  .causes-grid .registry-item,
+  .items-scroll .registry-item {
     flex-basis: 82%;
   }
 }
@@ -2340,8 +2426,9 @@ body.map-fullscreen-open {
 }
 
 .registry-item-imgwrap {
-  /* Wider than tall so the image leaves more room for the text below */
-  aspect-ratio: 4 / 3;
+  /* Wider than tall so the image leaves more room for the text below (kept
+     fairly short so the whole card stays compact) */
+  aspect-ratio: 3 / 2;
   overflow: hidden;
   background: #fff;
   /* Padding gives the whole image room to show (contained, never cropped) */
@@ -2418,8 +2505,13 @@ body.map-fullscreen-open {
   color: var(--color-text-light);
   line-height: 1.6;
   margin-bottom: 1.1rem;
-  /* Push the actions to the bottom so cards line up neatly */
-  flex: 1;
+  /* Keep cards short and uniform — cap the blurb at 3 lines on the card
+     (the full text still shows in the detail view). NOTE: no flex-grow here —
+     stretching the box would defeat the line-clamp and let text spill out. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Subtle "View details" hint at the bottom of unreserved cards */
@@ -2448,6 +2540,8 @@ body.map-fullscreen-open {
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+  /* Sit at the bottom of the card so buttons line up across cards */
+  margin-top: auto;
 }
 
 .registry-view-btn {

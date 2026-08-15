@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=72">
+  <link rel="stylesheet" href="css/styles.css?v=79">
 </head>
 <body>
 
@@ -42,8 +42,14 @@
       <p class="section-intro section-intro--wide">We know that travel is expensive and that your lives are busy so your presence at our wedding is more than we could ask for! And we mean that!!! TRULY!!! But if you TRULY INSIST on a gift and absolutely will not take no for an answer&hellip;here are a few ideas.</p>
 
       <!-- Registry items load from your Google Sheet; the Honeymoon Fund card
-           is added automatically as the first card (see js/registry.js) -->
-      <div class="registry-grid" id="registry-grid"></div>
+           is added automatically as the first card (see js/registry.js).
+           They render in a horizontal carousel so adding lots of items doesn't
+           bury the "Causes we love" section below. -->
+      <div class="causes-carousel">
+        <button type="button" class="causes-arrow causes-arrow--left" id="registry-prev" aria-label="Previous items" hidden></button>
+        <div class="registry-grid items-scroll" id="registry-grid"></div>
+        <button type="button" class="causes-arrow causes-arrow--right" id="registry-next" aria-label="More items" hidden></button>
+      </div>
       <div class="registry-status" id="registry-status"></div>
 
       <!-- Causes we love. Set up a free fundraiser at every.org, then for each
@@ -54,7 +60,7 @@
       <div class="causes-section">
         <div class="section-divider"></div>
         <h3 class="causes-title">Causes we love</h3>
-        <p class="causes-intro">We are so spoiled and really don&rsquo;t need anything. If the registry items have already been purchased or aren&rsquo;t really your style, please consider donating to one of the nonprofits below as a gift to us.</p>
+        <p class="causes-intro">We&rsquo;re so spoiled and really don&rsquo;t need anything. If any of these causes speak to you, please consider donating to one of the nonprofits below as a gift to us.</p>
       </div>
       <div class="causes-carousel">
         <button type="button" class="causes-arrow causes-arrow--left" id="causes-prev" aria-label="Previous causes"></button>
@@ -241,6 +247,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/registry.js?v=23"></script>
+  <script src="js/registry.js?v=24"></script>
 </body>
 </html>
