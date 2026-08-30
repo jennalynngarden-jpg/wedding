@@ -203,11 +203,17 @@ document.addEventListener('DOMContentLoaded', function () {
     scrollWheelZoom: false // don't hijack page scrolling
   }).setView([36.5900, -121.8500], 12);
 
-  // Add CartoDB Positron tiles (clean, minimalist style — free for low traffic)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
-    subdomains: 'abcd'
+  // Esri "Light Gray Canvas" tiles: clean, minimalist style, free for low
+  // traffic and NO API key required (CARTO's free basemaps now watermark tiles
+  // with "API KEY REQUIRED"). The base is the gray map; a second layer adds the
+  // place labels/roads on top so towns stay readable.
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 16
+  }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 16,
+    pane: 'overlayPane'
   }).addTo(map);
 
   /* ---------- Create layer groups (one per category) ---------- */
