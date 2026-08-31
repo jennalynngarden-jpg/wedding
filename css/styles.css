@@ -2471,6 +2471,9 @@ body.map-fullscreen-open {
 
 .registry-item-imgwrap--logo .registry-item-img {
   object-fit: contain;
+  /* Soften the corners of solid/square logos (e.g. Bright Spot's orange tile);
+     harmless on the transparent PNG logos */
+  border-radius: 10px;
 }
 
 .registry-item-noimg {

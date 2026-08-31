@@ -160,9 +160,17 @@
       .then(function (data) {
         var items = data.items || [];
         statusEl.style.display = 'none';
-        // Shuffle the gift items so visitors don't always see the same order
-        // (the Honeymoon Fund stays pinned first, added just below).
-        shuffle(items);
+        // Show available gifts first, purchased/reserved ones last — each group
+        // shuffled so no single item keeps the front spot. (The Honeymoon Fund
+        // stays pinned first, added just below.)
+        var available = [];
+        var reserved = [];
+        for (var r = 0; r < items.length; r++) {
+          (items[r].reserved ? reserved : available).push(items[r]);
+        }
+        shuffle(available);
+        shuffle(reserved);
+        items = available.concat(reserved);
         // Fund card first, then the gift items — all animate in together
         addFundCard();
         for (var i = 0; i < items.length; i++) {
