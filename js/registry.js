@@ -248,6 +248,16 @@
 
   /* ---------- Cause cards (static HTML) ---------- */
   function wireCauseCards() {
+    // Shuffle the charity cards so donations aren't weighted toward whichever
+    // one happens to be listed first. Re-append them to their grid in a random
+    // order before wiring up clicks.
+    var causesGrid = document.getElementById('causes-grid');
+    if (causesGrid) {
+      var shuffled = shuffle(Array.prototype.slice.call(
+        causesGrid.querySelectorAll('.registry-item--cause')));
+      shuffled.forEach(function (card) { causesGrid.appendChild(card); });
+    }
+
     var causes = document.querySelectorAll('.registry-item--cause');
     for (var i = 0; i < causes.length; i++) {
       (function (card) {
