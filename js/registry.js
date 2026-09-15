@@ -379,6 +379,13 @@
     detailGallery.style.display = gallery.length ? '' : 'none';
     // Angled, overlapping "pile of snapshots" look when requested
     detailGallery.classList.toggle('is-scatter', item.galleryStyle === 'scatter');
+    // Logo + a single snapshot (e.g. SCAR): on phones these sit side by side
+    // instead of stacking as two huge images (see .media-row in the CSS)
+    var mediaEl = detailModal.querySelector('.registry-detail-media');
+    if (mediaEl) {
+      mediaEl.classList.toggle('media-row',
+        gallery.length > 0 && item.galleryStyle !== 'scatter' && !!item.image);
+    }
     for (var g = 0; g < gallery.length; g++) {
       var gi = document.createElement('img');
       gi.src = gallery[g];
@@ -443,8 +450,11 @@
     var markBtn = document.getElementById('detail-mark-btn');
     if (markBtn) {
       markBtn.addEventListener('click', function () {
-        closeDetail();
-        openPurchaseModal(item);
+        // On phones this swaps the sheet's content in place (no jumpy
+        // close-then-reopen); on desktop it's a normal modal change.
+        swapSheets(closeDetail, modal, function () {
+          openPurchaseModal(item);
+        });
       });
     }
 
@@ -454,14 +464,16 @@
         if (isDirectGift) {
           // Money comes straight to us: offer a Venmo/Zelle chooser (no external
           // link to follow), then the record step happens from there.
-          closeDetail();
-          openPaymentModal(item);
+          swapSheets(closeDetail, paymentModal, function () {
+            openPaymentModal(item);
+          });
         } else {
           // Charity: the link opens their donate page in a new tab; follow up
           // with the record-donation modal for a thank-you.
           setTimeout(function () {
-            closeDetail();
-            openDonationModal(item.name, false, false);
+            swapSheets(closeDetail, donationModal, function () {
+              openDonationModal(item.name, false, false);
+            });
           }, 200);
         }
       });
@@ -487,12 +499,124 @@
     var box = detailModal.querySelector('.registry-detail');
     if (!scroll || !box) return;
     var scrollable = scroll.scrollHeight > scroll.clientHeight + 2;
-    box.classList.toggle('is-scrollable', scrollable);
+    // Hide the fade once the reader reaches the bottom — at that point there's
+    // nothing more to hint at, so fading the last line would just look broken.
+    var atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 8;
+    box.classList.toggle('is-scrollable', scrollable && !atBottom);
   }
 
-  function closeDetail() {
-    detailModal.style.display = 'none';
-    document.body.style.overflow = '';
+  /* ---------- Bottom-sheet helpers (phones) ---------- */
+  function isPhone() {
+    return window.matchMedia('(max-width: 560px)').matches;
+  }
+
+  // Hide a modal overlay. On phones the sheet slides back down first (the
+  // reverse of how it arrived); pass instant=true to skip the animation.
+  function hideOverlay(overlay, instant) {
+    var box = overlay.querySelector('.registry-modal');
+    function finish() {
+      overlay.style.display = 'none';
+      overlay.classList.remove('overlay-closing');
+      if (box) {
+        box.classList.remove('sheet-closing');
+        box.classList.remove('sheet-noanim');
+      }
+      document.body.style.overflow = '';
+    }
+    if (!instant && isPhone() && box && overlay.style.display === 'flex') {
+      box.classList.add('sheet-closing');
+      overlay.classList.add('overlay-closing');
+      setTimeout(finish, 260);
+    } else {
+      finish();
+    }
+  }
+
+  // Move from one sheet straight into another (e.g. item detail -> mark as
+  // purchased). On phones, instead of sliding one sheet down and another up,
+  // the content swaps in place and the sheet's height glides to the new size.
+  function swapSheets(closeFn, toOverlay, openFn) {
+    if (!isPhone()) {
+      closeFn();
+      openFn();
+      return;
+    }
+    // Measure whichever sheet is currently open
+    var openOverlay = null;
+    [detailModal, modal, donationModal, paymentModal].forEach(function (o) {
+      if (o && o.style.display === 'flex') openOverlay = o;
+    });
+    var fromH = 0;
+    if (openOverlay) {
+      var fromBox = openOverlay.querySelector('.registry-modal');
+      if (fromBox) fromH = fromBox.getBoundingClientRect().height;
+    }
+    closeFn(true);   // hide instantly — the new sheet takes its place
+    openFn();
+    var toBox = toOverlay.querySelector('.registry-modal');
+    if (!toBox) return;
+    toBox.classList.add('sheet-noanim');   // it "is" the same sheet, just new content
+    if (fromH) {
+      var toH = toBox.getBoundingClientRect().height;
+      if (Math.abs(toH - fromH) > 2) {
+        toBox.style.height = fromH + 'px';
+        void toBox.offsetHeight;  // reflow so the height transition has a start
+        toBox.style.transition = 'height 0.28s ease';
+        toBox.style.height = toH + 'px';
+      }
+      setTimeout(function () {
+        toBox.style.height = '';
+        toBox.style.transition = '';
+      }, 320);
+    }
+  }
+
+  // Swiping down from the top of a sheet dismisses it (phones)
+  function makeSheetSwipeable(overlay, closeFn) {
+    var box = overlay.querySelector('.registry-modal');
+    if (!box) return;
+    var startY = null, delta = 0, dragging = false;
+    box.addEventListener('touchstart', function (e) {
+      if (!isPhone()) return;
+      var rect = box.getBoundingClientRect();
+      // Only grab drags that start near the top (the grabber-handle zone)
+      if (e.touches[0].clientY - rect.top <= 56) {
+        dragging = true;
+        delta = 0;
+        startY = e.touches[0].clientY;
+        box.style.transition = 'none';
+      }
+    }, { passive: true });
+    box.addEventListener('touchmove', function (e) {
+      if (!dragging) return;
+      delta = Math.max(0, e.touches[0].clientY - startY);
+      box.style.transform = 'translateY(' + delta + 'px)';
+      if (delta > 0) e.preventDefault();  // don't scroll the sheet mid-drag
+    }, { passive: false });
+    box.addEventListener('touchend', function () {
+      if (!dragging) return;
+      dragging = false;
+      box.style.transition = 'transform 0.25s ease';
+      if (delta > 80) {
+        // Far enough — let it continue off-screen, then actually close
+        box.style.transform = 'translateY(110%)';
+        overlay.classList.add('overlay-closing');
+        setTimeout(function () {
+          closeFn(true);
+          box.style.transform = '';
+          box.style.transition = '';
+        }, 240);
+      } else {
+        // Not far enough — spring back into place
+        box.style.transform = '';
+        setTimeout(function () { box.style.transition = ''; }, 260);
+      }
+      delta = 0;
+    });
+  }
+
+  function closeDetail(instant) {
+    hideOverlay(detailModal, instant);
   }
 
   /* ---------- Purchase modal ---------- */
@@ -509,9 +633,8 @@
     nameInput.focus();
   }
 
-  function closeModal() {
-    modal.style.display = 'none';
-    document.body.style.overflow = '';
+  function closeModal(instant) {
+    hideOverlay(modal, instant);
     activeItemId = null;
   }
 
@@ -544,9 +667,8 @@
     donorName.focus();
   }
 
-  function closeDonationModal() {
-    donationModal.style.display = 'none';
-    document.body.style.overflow = '';
+  function closeDonationModal(instant) {
+    hideOverlay(donationModal, instant);
     activeCharity = null;
   }
 
@@ -573,16 +695,17 @@
     document.body.style.overflow = 'hidden';
   }
 
-  function closePaymentModal() {
-    paymentModal.style.display = 'none';
-    document.body.style.overflow = '';
+  function closePaymentModal(instant) {
+    hideOverlay(paymentModal, instant);
   }
 
   // From the payment chooser, move on to the optional "let us know" step
   function paymentToRecord() {
     var item = activePaymentItem;
-    closePaymentModal();
-    if (item) openDonationModal(item.name, !!item.isFund, true);
+    if (!item) { closePaymentModal(); return; }
+    swapSheets(closePaymentModal, donationModal, function () {
+      openDonationModal(item.name, !!item.isFund, true);
+    });
   }
 
   function submitDonation() {
@@ -624,24 +747,35 @@
   }
 
   function wireModals() {
-    document.getElementById('registry-detail-close').addEventListener('click', closeDetail);
+    document.getElementById('registry-detail-close').addEventListener('click', function () { closeDetail(); });
     detailModal.addEventListener('click', function (e) {
       if (e.target === detailModal) closeDetail();
     });
 
-    document.getElementById('registry-modal-close').addEventListener('click', closeModal);
+    // Swiping down from the top of any sheet dismisses it (phones)
+    makeSheetSwipeable(detailModal, closeDetail);
+    makeSheetSwipeable(modal, closeModal);
+    makeSheetSwipeable(donationModal, closeDonationModal);
+    makeSheetSwipeable(paymentModal, closePaymentModal);
+
+    // Keep the footer fade in sync while the detail text scrolls (it hides
+    // once the reader reaches the bottom)
+    var detailScroll = detailModal.querySelector('.registry-detail-scroll');
+    if (detailScroll) detailScroll.addEventListener('scroll', updateDetailFade);
+
+    document.getElementById('registry-modal-close').addEventListener('click', function () { closeModal(); });
     modal.addEventListener('click', function (e) {
       if (e.target === modal) closeModal();
     });
 
-    document.getElementById('donation-close').addEventListener('click', closeDonationModal);
+    document.getElementById('donation-close').addEventListener('click', function () { closeDonationModal(); });
     donationModal.addEventListener('click', function (e) {
       if (e.target === donationModal) closeDonationModal();
     });
     donationConfirm.addEventListener('click', submitDonation);
 
     // Payment chooser (Venmo / Zelle)
-    document.getElementById('payment-close').addEventListener('click', closePaymentModal);
+    document.getElementById('payment-close').addEventListener('click', function () { closePaymentModal(); });
     paymentModal.addEventListener('click', function (e) {
       if (e.target === paymentModal) closePaymentModal();
     });

@@ -1487,6 +1487,11 @@ body.map-fullscreen-open {
   to   { transform: translateY(0); }
 }
 
+@keyframes pin-sheet-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
 @keyframes pin-scrim-fade {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -2959,6 +2964,18 @@ body.map-fullscreen-open {
   z-index: 1;
 }
 
+/* When a scatter photo pile follows the logo, top-align the logo and shrink
+   its box so the photos start higher and more of them are visible. */
+.registry-detail-media:has(.is-scatter) .registry-detail-imgwrap {
+  aspect-ratio: auto;
+  height: 90px;
+  align-items: flex-start;
+}
+
+.registry-detail-media:has(.is-scatter) .registry-detail-gallery.is-scatter {
+  margin-top: -0.5rem;
+}
+
 .registry-detail-gallery.is-scatter img {
   width: 82%;
   max-width: 155px;
@@ -3002,6 +3019,66 @@ body.map-fullscreen-open {
 
 /* On small screens, stack: image on top, text below, full-width buttons */
 @media (max-width: 560px) {
+  /* Every registry modal (detail, purchase, donation, payment) becomes a
+     bottom sheet: slides up from the bottom edge, full width, rounded top. */
+  .registry-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .registry-modal {
+    max-width: none;
+    border-radius: 18px 18px 0 0;
+    max-height: 88vh;
+    animation: pin-sheet-up 0.3s ease;
+    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Little grabber handle at the top of each sheet */
+  .registry-modal::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+  }
+
+  /* Seamless handoff between two sheets (see swapSheets in registry.js):
+     the incoming sheet skips its slide-up so it reads as the same sheet
+     with new content. */
+  .registry-modal.sheet-noanim {
+    animation: none;
+  }
+
+  /* Dismissing a sheet slides it back down — the reverse of how it arrived */
+  .registry-modal.sheet-closing {
+    animation: pin-sheet-down 0.26s ease forwards;
+  }
+
+  .registry-modal-overlay.overlay-closing {
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.26s ease;
+  }
+
+  /* The detail sheet manages its own spacing (scroll area + pinned footer) */
+  #registry-detail-modal .registry-detail {
+    padding-bottom: 0;
+  }
+
+  /* Extra room under the ✕ so it doesn't crowd the images */
+  .registry-detail-scroll {
+    padding-top: 3.25rem;
+  }
+
+  /* Keep the pinned CTA clear of the iPhone home indicator */
+  .registry-detail-footer {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .registry-detail-grid {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -3019,6 +3096,26 @@ body.map-fullscreen-open {
   /* Space between the image/photos and the heading + text below them */
   .registry-detail-media {
     margin-bottom: 1.5rem;
+  }
+
+  /* Logo + a single snapshot (e.g. SCAR): sit side by side, smaller, instead
+     of two huge stacked images. (JS adds .media-row for this case.) */
+  .registry-detail-media.media-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .registry-detail-media.media-row .registry-detail-imgwrap {
+    flex: 1 1 0;
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+    margin-bottom: 0;
+  }
+
+  .registry-detail-media.media-row .registry-detail-gallery {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   /* Scattered photos: on phones, arrange them in a 2-across square cluster
@@ -3052,12 +3149,19 @@ body.map-fullscreen-open {
     margin: -6px;
   }
 
+  /* Stack the CTAs full-width so long labels ("Mark as purchased") never
+     get cut off */
+  .registry-detail-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .registry-detail-actions .registry-view-btn,
   .registry-detail-actions .registry-mark-btn,
   .registry-detail-actions .registry-reserved-badge {
-    flex: 1;
-    min-width: 140px;
+    width: 100%;
     text-align: center;
+    white-space: nowrap;
   }
 }
 
@@ -4322,9 +4426,15 @@ body.map-fullscreen-open {
     height: 300px;
   }
 
+  /* Compact pills so all four fit on one line with no cutoff or scrolling */
+  .map-filters {
+    gap: 0.3rem;
+  }
+
   .map-filter-btn {
-    font-size: 0.75rem;
-    padding: 0.35rem 0.75rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.01em;
+    padding: 0.32rem 0.55rem;
   }
 }
 
