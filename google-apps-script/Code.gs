@@ -430,7 +430,11 @@ function guestSummaryRows(guests, songRequest, specialSong) {
 
 // Builds a guest email in the website's style. Returns { subject, text, html }.
 //   e: { subject, hello, paragraphs: [...], rows: [[title, details]],
-//        closing: [...], buttonText, link }
+//        closing: [...], buttonText, link,
+//        buttonNote (optional: small gray line under the button, followed
+//                    by the link itself, for when the button won't open),
+//        extra (optional: { html, text } for an extra section, like the
+//               room block, shown after a divider line before "Love,") }
 function buildGuestEmail(e) {
   var paragraphs = (e.paragraphs || []).filter(Boolean);
   var closing = (e.closing || []).filter(Boolean);
@@ -441,6 +445,7 @@ function buildGuestEmail(e) {
     rows.map(function (r) { return '\n  ' + r[0] + ': ' + r[1]; }).join('') +
     (closing.length ? '\n\n' + closing.join('\n\n') : '') +
     (e.buttonText ? '\n' + e.buttonText + ': ' + e.link : '') +
+    (e.extra ? '\n\n' + e.extra.text : '') +
     '\n\nLove,\nJenna & Liam';
 
   // Sizes are set right on each table cell: some email apps (like Apple Mail)
@@ -451,6 +456,14 @@ function buildGuestEmail(e) {
       '<span style="color:#6b6b6b;font-size:16px;">' + escapeHtml(r[1]) + '</span></td></tr>';
   }).join('');
   var button = e.buttonText ? emailButton(e.buttonText, e.link, '24px auto') : '';
+  if (e.buttonNote) {
+    button = emailButton(e.buttonText, e.link, '24px auto 12px') +
+      '<p style="text-align:center;color:#8a8a8a;font-size:12px;line-height:18px;margin:0 0 20px;">' +
+        escapeHtml(e.buttonNote) + '<br>' +
+        '<a href="' + e.link + '" style="color:#8a8a8a;text-decoration:underline;word-break:break-all;">' +
+          escapeHtml(e.link.replace(/^https:\/\//, '')) + '</a></p>';
+  }
+  var extra = e.extra ? '<div style="border-top:1px solid #e8e4df;margin:8px 0 24px;"></div>' + e.extra.html : '';
   var html =
     '<div style="background:#ffffff;padding:24px 16px;font-family:Helvetica,Arial,sans-serif;color:#3a3a3a;font-size:15px;line-height:1.6;">' +
       '<div style="max-width:520px;margin:0 auto;">' +
@@ -464,6 +477,7 @@ function buildGuestEmail(e) {
         (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
         closing.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join('') +
         button +
+        extra +
         '<p>Love,<br>Jenna &amp; Liam</p>' +
       '</div>' +
     '</div>';
@@ -690,11 +704,15 @@ function notifyNewRsvp(data) {
 // link fills the whole cell. That way a tap anywhere on the button opens the
 // link in every email app (some, like iPhone Mail, can ignore taps on a link
 // that's only styled to look like a button).
-function emailButton(text, link, margin) {
+// outline: true makes a white button with a dark green border, for a
+// second, less important button.
+function emailButton(text, link, margin, outline) {
+  var bg = outline ? '#ffffff' : '#2c3e2d';
+  var color = outline ? '#2c3e2d' : '#ffffff';
   return '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:' + margin + ';border-collapse:separate;">' +
-    '<tr><td align="center" bgcolor="#2c3e2d" style="background:#2c3e2d;border-radius:6px;">' +
+    '<tr><td align="center" bgcolor="' + bg + '" style="background:' + bg + ';border-radius:6px;' + (outline ? 'border:1px solid #2c3e2d;' : '') + '">' +
       '<a href="' + link + '" target="_blank" style="display:block;padding:12px 24px;font-family:Helvetica,Arial,sans-serif;' +
-        'font-size:13px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:6px;">' +
+        'font-size:13px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:' + color + ';text-decoration:none;border-radius:6px;">' +
         escapeHtml(text) + '</a>' +
     '</td></tr></table>';
 }
@@ -1004,6 +1022,136 @@ function announceSendAll() {
       return;
     }
     t.rows.forEach(function (row) { sheet.getRange(row, ANNOUNCED_COLUMN).setValue(new Date()); });
+    SpreadsheetApp.flush();
+    sent++;
+  }
+  console.log('Sent ' + sent + ' emails. Everyone on the list has it now.');
+}
+
+/* ---------- One-time follow-up: "A working link to your RSVP" ---------- */
+// The one-time email's button didn't open in some phone email apps, so this
+// sends everyone who got it a working link. Guests who are coming also hear
+// about the Portola room block. Run from the Apps Script editor, same as the
+// one-time email:
+//   1. followUpDryRun:  lists who would get it. Sends nothing.
+//   2. followUpPreview: sends YOU one sample of each version (using real
+//                       RSVPs). Sends nothing to guests.
+//   3. followUpSendAll: sends it to everyone on the list. Each RSVP is marked
+//                       in the "followed up" column (Responses column P), so
+//                       running it again never emails anyone twice.
+var FOLLOWUP_COLUMN = 16;  // Responses column P
+var ROOM_BLOCK_URL = 'https://book.passkey.com/go/ParrishGardenWedding2027';
+var ROOM_BLOCK_PHOTOS = [
+  { src: 'https://jennaliam.info/images/portola/courtyard.jpg', alt: 'The Portola courtyard at night' },
+  { src: 'https://jennaliam.info/images/portola/room.jpg', alt: 'A Portola guest room' },
+  { src: 'https://jennaliam.info/images/portola/harbor.jpg', alt: 'Monterey harbor at sunset' }
+];
+
+// Everyone who got the one-time email and hasn't gotten this one yet
+function followUpTargets() {
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var byCode = {}, order = [];
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    var code = r[CODE_COLUMN - 1];
+    if (!r[2] || !code) continue;
+    if (!byCode[code]) {
+      byCode[code] = { code: code, submittedBy: r[8], email: String(r[10] || '').trim(),
+        guests: [], rows: [], announced: false, followedUp: false };
+      order.push(code);
+    }
+    var t = byCode[code];
+    t.rows.push(i + 1);
+    t.guests.push({ guestId: r[2], guestName: r[3], attending: r[4] });
+    if (r[ANNOUNCED_COLUMN - 1]) t.announced = true;
+    if (r[FOLLOWUP_COLUMN - 1]) t.followedUp = true;
+  }
+  return order.map(function (code) { return byCode[code]; }).filter(function (t) {
+    return t.email && t.announced && !t.followedUp;
+  });
+}
+
+function isComing(t) {
+  return t.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+}
+
+// The room block section: three photos, the details, and a booking button
+function roomBlockSection() {
+  var details = 'Also, some good news: we now have a room block at the Portola Hotel & Spa in downtown Monterey, ' +
+    'right by Fisherman’s Wharf. The group rate is $309 a night (plus tax) for Friday, July 23 and Saturday, July 24. ' +
+    'Rooms are limited, so book by June 23, 2027.';
+  var note = 'Already booked at the Portola? Cancel and rebook through our link to get the group rate.';
+  var photos = ROOM_BLOCK_PHOTOS.map(function (p, i) {
+    return '<td width="33%" style="padding:0 ' + (i < 2 ? '4px' : '0') + ' 0 ' + (i > 0 ? '4px' : '0') + ';">' +
+      '<img src="' + p.src + '" alt="' + escapeHtml(p.alt) + '" width="168" ' +
+        'style="display:block;width:100%;height:auto;border:0;border-radius:6px;"></td>';
+  }).join('');
+  var html =
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px;"><tr>' + photos + '</tr></table>' +
+    '<p style="color:#5c7a4e;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 4px;">Room block</p>' +
+    '<p style="font-family:Georgia,serif;font-size:19px;color:#2c3e2d;margin:0 0 8px;">Portola Hotel &amp; Spa</p>' +
+    '<p style="margin:0 0 8px;">' + escapeHtml(details) + '</p>' +
+    '<p style="color:#6b6b6b;font-size:13px;line-height:1.5;margin:0;">' + escapeHtml(note) + '</p>' +
+    emailButton('Book at group rate', ROOM_BLOCK_URL, '20px auto 24px', true);
+  var text = 'ROOM BLOCK: Portola Hotel & Spa\n' + details + '\n' + note + '\nBook at group rate: ' + ROOM_BLOCK_URL;
+  return { html: html, text: text };
+}
+
+function composeFollowUp(t) {
+  var coming = isComing(t);
+  var submitter = t.guests.filter(function (g) { return g.guestId === t.submittedBy; })[0] || t.guests[0];
+  var hello = submitter ? 'Hi ' + String(submitter.guestName).split(' ')[0] + ',' : 'Hi there,';
+  return buildGuestEmail({
+    subject: coming ? 'Your RSVP link, plus a hotel room block' : 'A working link to your RSVP',
+    hello: hello,
+    paragraphs: ['A quick follow-up to our last email: we noticed that on some mobile email apps, tapping the button didn’t open anything. Sorry about that! This one should work.'],
+    buttonText: coming ? 'View your RSVP' : 'Update your RSVP',
+    link: RSVP_PAGE_URL + '?code=' + t.code,
+    buttonNote: 'If the button still doesn’t open, copy this link into your browser:',
+    extra: coming ? roomBlockSection() : null
+  });
+}
+
+// 1. Lists who would get it. Sends nothing.
+function followUpDryRun() {
+  var targets = followUpTargets();
+  targets.forEach(function (t) {
+    console.log((isComing(t) ? 'Coming        ' : 'Can’t make it ') + t.email + '  (' +
+      t.guests.map(function (g) { return g.guestName; }).join(', ') + ')');
+  });
+  console.log(targets.length + ' emails would be sent. (Nothing was sent.)');
+}
+
+// 2. Sends you one sample of each version, using real RSVPs. Sends nothing to guests.
+function followUpPreview() {
+  var me = Session.getActiveUser().getEmail();
+  var targets = followUpTargets();
+  var coming = targets.filter(isComing)[0];
+  var cant = targets.filter(function (t) { return !isComing(t); })[0];
+  [coming, cant].forEach(function (t) {
+    if (!t) return;
+    var email = composeFollowUp(t);
+    email.subject = '(Preview for ' + t.email + ') ' + email.subject;
+    sendComposedEmail(me, email);
+  });
+  console.log('Sent you ' + [coming, cant].filter(Boolean).length + ' preview(s). Nothing was sent to guests.');
+}
+
+// 3. Sends it to everyone on the list, marking each RSVP as it goes
+function followUpSendAll() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+  if (!sheet.getRange(1, FOLLOWUP_COLUMN).getValue()) sheet.getRange(1, FOLLOWUP_COLUMN).setValue('followed up');
+  var targets = followUpTargets();
+  var sent = 0;
+  for (var i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    try {
+      sendComposedEmail(t.email, composeFollowUp(t));
+    } catch (err) {
+      console.log('Stopped after ' + sent + ' emails: ' + err + '. Run followUpSendAll again tomorrow to send the rest (no one gets it twice).');
+      return;
+    }
+    t.rows.forEach(function (row) { sheet.getRange(row, FOLLOWUP_COLUMN).setValue(new Date()); });
     SpreadsheetApp.flush();
     sent++;
   }
