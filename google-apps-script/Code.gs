@@ -434,7 +434,12 @@ function guestSummaryRows(guests, songRequest, specialSong) {
 //        buttonNote (optional: small gray line under the button, followed
 //                    by the link itself, for when the button won't open),
 //        extra (optional: { html, text } for an extra section, like the
-//               room block, shown after a divider line before "Love,") }
+//               room block, shown after a divider line before "Love,"),
+//        hero (optional: a photo's web address, shown above the greeting),
+//        body (optional: { html, text } for custom sections after the
+//              first paragraphs, like a schedule),
+//        footnote (optional: a small gray line under the button),
+//        footnoteLink (optional: makes the footnote a green link to this address) }
 function buildGuestEmail(e) {
   var paragraphs = (e.paragraphs || []).filter(Boolean);
   var closing = (e.closing || []).filter(Boolean);
@@ -442,9 +447,11 @@ function buildGuestEmail(e) {
 
   // Plain-text version (for email apps that don't show formatting)
   var text = e.hello + '\n\n' + paragraphs.join('\n\n') +
+    (e.body ? '\n\n' + e.body.text : '') +
     rows.map(function (r) { return '\n  ' + r[0] + ': ' + r[1]; }).join('') +
     (closing.length ? '\n\n' + closing.join('\n\n') : '') +
     (e.buttonText ? '\n' + e.buttonText + ': ' + e.link : '') +
+    (e.footnote ? '\n' + e.footnote + (e.footnoteLink ? ': ' + e.footnoteLink : '') : '') +
     (e.extra ? '\n\n' + e.extra.text : '') +
     '\n\nLove,\nJenna & Liam';
 
@@ -463,7 +470,14 @@ function buildGuestEmail(e) {
         '<a href="' + e.link + '" style="color:#8a8a8a;text-decoration:underline;word-break:break-all;">' +
           escapeHtml(e.link.replace(/^https:\/\//, '')) + '</a></p>';
   }
+  if (e.footnote) {
+    button = emailButton(e.buttonText, e.link, '24px auto 12px') +
+      '<p style="text-align:center;color:#8a8a8a;font-size:13px;line-height:19px;margin:0 0 24px;">' +
+        (e.footnoteLink ? '<a href="' + e.footnoteLink + '" style="color:#5c7a4e;text-decoration:underline;">' + escapeHtml(e.footnote) + '</a>'
+                        : escapeHtml(e.footnote)) + '</p>';
+  }
   var extra = e.extra ? '<div style="border-top:1px solid #e8e4df;margin:8px 0 24px;"></div>' + e.extra.html : '';
+  var hero = e.hero ? '<img src="' + e.hero + '" width="520" alt="" style="display:block;width:100%;height:auto;border:0;border-radius:8px;margin:0 0 20px;">' : '';
   var html =
     '<div style="background:#ffffff;padding:24px 16px;font-family:Helvetica,Arial,sans-serif;color:#3a3a3a;font-size:15px;line-height:1.6;">' +
       '<div style="max-width:520px;margin:0 auto;">' +
@@ -472,8 +486,10 @@ function buildGuestEmail(e) {
           '<img src="' + EMAIL_CREST_URL + '" width="160" alt="" style="width:160px;max-width:60%;height:auto;border:0;"></p>' +
         '<p style="font-family:Georgia,serif;font-size:22px;color:#2c3e2d;text-align:center;margin:0 0 4px;">Jenna &amp; Liam</p>' +
         '<p style="text-align:center;color:#6b6b6b;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 28px;">July 24, 2027 &middot; Monterey, California</p>' +
+        hero +
         '<p>' + escapeHtml(e.hello) + '</p>' +
         paragraphs.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join('') +
+        (e.body ? e.body.html : '') +
         (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
         closing.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join('') +
         button +
@@ -850,6 +866,7 @@ function sendConfirmation(data) {
 // who left the page without finishing or skipping the optional questions.
 function sendPendingEmails() {
   if (!sendOutbox()) return;  // Gmail is still at its limit, so try again next time
+  sendCountdownEmails();      // the scheduled emails before the wedding (only on their dates)
   var rows = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
   var cutoff = new Date().getTime() - PENDING_EMAIL_MINUTES * 60 * 1000;
   var done = {};
@@ -1221,6 +1238,284 @@ function followUpSendAll() {
     sent++;
   }
   console.log('Sent ' + sent + ' emails. Everyone on the list has it now.');
+}
+
+/* ---------- Countdown emails: sent automatically before the wedding ---------- */
+// Three emails to every RSVP with someone coming, each sent once on its date:
+//   May 15, 2027:  "Traveling to Monterey" (schedule + travel tips; anyone who
+//                  RSVPs yes after that gets it within 10 minutes)
+//   July 7, 2027:  "Last chance to update your RSVP" (until changes lock July 14)
+//   July 19, 2027: "See you this weekend!" (schedule, weather, shuttles, packing)
+// The 10-minute timer (sendPendingEmails) checks the date and sends them, so
+// there's nothing to turn on. Each RSVP gets marked in its own column of the
+// Responses tab (Q, R, S), so no one gets an email twice. If Gmail's daily
+// limit is reached, the rest wait in the Email outbox and go out after.
+//
+// BEFORE MAY 15, 2027, fill in these (they show up in the emails):
+var CEREMONY_TIME = 'Time TBD';            // for example: '4:00 PM'
+var SHUTTLE_PICKUP = '[Pickup spot]';      // for example: 'Portola Hotel & Spa'
+var SHUTTLE_PICKUP_ADDRESS = '';           // for the map link, for example: 'Two Portola Plaza, Monterey, CA'
+var SHUTTLE_TIMES = '[Times]';             // for example: '3:00 and 3:30 PM'
+//
+// To check them anytime, run from the Apps Script editor:
+//   countdownDryRun:  lists who would get each email. Sends nothing.
+//   countdownPreview: sends YOU one of each (using a real RSVP). Sends nothing to guests.
+var EMAIL_IMAGES = 'https://jennaliam.info/images/email/';
+var WEDDING_OVER = new Date('2027-07-25T07:00:00Z');  // midnight after July 24, Pacific
+var COUNTDOWN_EMAILS = [
+  // sendAt is 8 AM Pacific on that day
+  { name: 'Traveling to Monterey', column: 17, header: 'travel email', sendAt: new Date('2027-05-15T15:00:00Z'), compose: composeTravelEmail },
+  { name: 'Last call for changes', column: 18, header: 'last call email', sendAt: new Date('2027-07-07T15:00:00Z'), stopAt: EDIT_DEADLINE, compose: composeLastCallEmail },
+  { name: 'See you this weekend', column: 19, header: 'weekend email', sendAt: new Date('2027-07-19T15:00:00Z'), compose: composeWeekendEmail }
+];
+
+// Runs from the 10-minute timer. Sends any countdown email whose day has come
+// to every RSVP that hasn't gotten it yet.
+function sendCountdownEmails() {
+  var now = new Date();
+  var due = COUNTDOWN_EMAILS.filter(function (c) {
+    return now >= c.sendAt && now < (c.stopAt || WEDDING_OVER);
+  });
+  if (!due.length) return;
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+  due.forEach(function (c) {
+    if (!sheet.getRange(1, c.column).getValue()) sheet.getRange(1, c.column).setValue(c.header);
+    countdownTargets(c.column).forEach(function (t) {
+      sendOrQueue(t.email, c.compose(t));
+      t.rows.forEach(function (row) { sheet.getRange(row, c.column).setValue(new Date()); });
+      SpreadsheetApp.flush();
+    });
+  });
+}
+
+// Every RSVP with someone coming that hasn't gotten this email yet. If the
+// same person RSVPed for the same party more than once, only their latest
+// RSVP counts.
+function countdownTargets(column) {
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var byCode = {}, order = [];
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    var code = r[CODE_COLUMN - 1];
+    if (!r[2] || !code) continue;
+    if (!byCode[code]) {
+      byCode[code] = { code: code, partyId: r[1], submittedBy: r[8], email: String(r[10] || '').trim(),
+        guests: [], rows: [], songRequest: '', specialSong: '', done: false };
+      order.push(code);
+    }
+    var t = byCode[code];
+    t.rows.push(i + 1);
+    t.guests.push({ guestId: r[2], guestName: r[3], attending: r[4], mealChoice: r[5], dietaryRestrictions: r[6] });
+    t.songRequest = t.songRequest || r[7];
+    t.specialSong = t.specialSong || r[9];
+    if (r[column - 1]) t.done = true;
+  }
+  var latest = {};
+  order.forEach(function (code) {
+    var t = byCode[code];
+    if (t.email) latest[t.email.toLowerCase() + '|' + t.partyId] = code;
+  });
+  return order.map(function (code) { return byCode[code]; }).filter(function (t) {
+    return t.email && !t.done && isComing(t) && latest[t.email.toLowerCase() + '|' + t.partyId] === t.code;
+  });
+}
+
+// "Hi Morgan," (the person who submitted the RSVP)
+function countdownHello(t) {
+  var submitter = t.guests.filter(function (g) { return g.guestId === t.submittedBy; })[0] || t.guests[0];
+  return submitter ? 'Hi ' + String(submitter.guestName).split(' ')[0] + ',' : 'Hi there,';
+}
+
+// A place name that opens in Google Maps
+function mapLink(name, address) {
+  var url = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name + (address ? ', ' + address : ''));
+  return '<a href="' + url + '" style="color:#5c7a4e;text-decoration:underline;">' + escapeHtml(name) + '</a>';
+}
+
+// Small green all-caps heading, like "WEEKEND SCHEDULE"
+function sectionLabel(text) {
+  return '<p style="color:#5c7a4e;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:28px 0 12px;">' + escapeHtml(text) + '</p>';
+}
+
+function emailIcon(name, size) {
+  return '<img src="' + EMAIL_IMAGES + 'icon-' + name + '.png" width="' + size + '" height="' + size + '" alt="" ' +
+    'style="display:block;width:' + size + 'px;height:' + size + 'px;border:0;">';
+}
+
+// The weekend schedule as a timeline: date, a dot on a line, then the event.
+// The rehearsal dinner only shows if someone in the party is going to it.
+function scheduleSection(t, label) {
+  var rehearsal = t.guests.some(function (g) { return g.attending === 'wedding-and-rehearsal'; });
+  var events = [
+    { dow: 'Thu', day: '22', title: 'Welcome dinner', time: '6:00 PM', place: 'Gianni’s Pizza', address: '725 Lighthouse Ave, Monterey, CA' },
+    { dow: 'Fri', day: '23', title: 'Rehearsal dinner', time: '5:30 PM', place: 'The Fish Hopper', address: '700 Cannery Row, Monterey, CA', rehearsalOnly: true },
+    { dow: 'Sat', day: '24', title: 'Ceremony & reception', time: CEREMONY_TIME, place: 'Fairview Laguna Seca', address: '10520 York Road, Monterey, CA' },
+    { dow: 'Sun', day: '25', title: 'Picnic at Lover’s Point', time: '11:30 AM', place: 'Lover’s Point Park, Pacific Grove', address: '631 Ocean View Blvd, Pacific Grove, CA' }
+  ].filter(function (ev) { return rehearsal || !ev.rehearsalOnly; });
+  var rows = events.map(function (ev, i) {
+    var last = i === events.length - 1;
+    return '<tr>' +
+      '<td width="40" valign="top" align="center" style="padding:0 8px 0 0;">' +
+        '<div style="font-size:11px;line-height:14px;letter-spacing:1px;color:#5c7a4e;text-transform:uppercase;">' + ev.dow + '</div>' +
+        '<div style="font-family:Georgia,serif;font-size:22px;line-height:26px;color:#2c3e2d;">' + ev.day + '</div></td>' +
+      '<td width="12" valign="top" align="center" style="padding:0 14px 0 0;">' +
+        '<div style="width:10px;height:10px;border-radius:5px;background:#7a9a6d;margin:8px auto 0;font-size:0;line-height:0;">&nbsp;</div>' +
+        (last ? '' : '<div style="width:2px;height:40px;background:#d6dfd1;margin:4px auto 0;font-size:0;line-height:0;">&nbsp;</div>') +
+      '</td>' +
+      '<td valign="top" style="padding:2px 0 ' + (last ? '0' : '20px') + ';">' +
+        '<div style="font-size:15px;line-height:21px;color:#2c3e2d;font-weight:bold;">' + escapeHtml(ev.title) + '</div>' +
+        '<div style="font-size:13px;line-height:19px;color:#6b6b6b;">' + escapeHtml(ev.time) + ' &middot; ' + mapLink(ev.place, ev.address) + '</div></td>' +
+    '</tr>';
+  }).join('');
+  var text = label.toUpperCase() + '\n' + events.map(function (ev) {
+    return '  ' + ev.dow + ' ' + ev.day + ': ' + ev.title + ', ' + ev.time + ', ' + ev.place;
+  }).join('\n');
+  return {
+    html: sectionLabel(label) + '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">' + rows + '</table>',
+    text: text
+  };
+}
+
+// Cards with an icon, a title, and a line or two, two to a row.
+//   tiles: [{ icon, title, html, text }]
+function tileGrid(tiles) {
+  var cell = function (tile) {
+    return '<td width="48%" valign="top" style="width:48%;background:#f6f4f0;border-radius:8px;padding:16px;">' +
+      emailIcon(tile.icon, 28) +
+      '<div style="font-size:14px;line-height:20px;color:#2c3e2d;font-weight:bold;margin:6px 0 4px;">' + escapeHtml(tile.title) + '</div>' +
+      '<div style="font-size:13px;line-height:19px;color:#6b6b6b;">' + tile.html + '</div></td>';
+  };
+  var rows = [];
+  for (var i = 0; i < tiles.length; i += 2) {
+    if (i) rows.push('<tr><td colspan="3" height="10" style="height:10px;font-size:0;line-height:0;">&nbsp;</td></tr>');
+    rows.push('<tr>' + cell(tiles[i]) + '<td width="10" style="width:10px;min-width:10px;font-size:0;line-height:0;">&nbsp;</td>' +
+      (tiles[i + 1] ? cell(tiles[i + 1]) : '<td width="48%"></td>') + '</tr>');
+  }
+  return '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">' + rows.join('') + '</table>';
+}
+
+function tilesText(tiles) {
+  return tiles.map(function (t) { return '  ' + t.title + ': ' + t.text; }).join('\n');
+}
+
+// May 15: "Traveling to Monterey for our wedding"
+function composeTravelEmail(t) {
+  var schedule = scheduleSection(t, 'Weekend schedule');
+  var tiles = [
+    { icon: 'plane', title: 'MRY is the closest airport',
+      html: mapLink('Monterey Regional Airport', '200 Fred Kane Dr, Monterey, CA') + ' is 20 minutes from downtown Monterey. SJC and SFO are 1.5 to 2 hours away.',
+      text: 'Monterey Regional Airport is 20 minutes from downtown Monterey. SJC and SFO are 1.5 to 2 hours away.' },
+    { icon: 'shuttle', title: 'Shuttles on the day',
+      html: 'We’ll run shuttles to and from ' + mapLink('Fairview Laguna Seca', '10520 York Road, Monterey, CA') + '. There’s free parking too.',
+      text: 'We’ll run shuttles to and from Fairview Laguna Seca. There’s free parking too.' },
+    { icon: 'bed', title: 'Our room block',
+      html: mapLink('Portola Hotel & Spa', 'Two Portola Plaza, Monterey, CA') + ', $309/night. Book by June 23.' +
+        '<br><a href="' + ROOM_BLOCK_URL + '" style="color:#5c7a4e;text-decoration:underline;display:inline-block;margin-top:6px;">Book at group rate</a>',
+      text: 'Portola Hotel & Spa, $309/night. Book by June 23: ' + ROOM_BLOCK_URL },
+    { icon: 'hanger', title: 'Cocktail attire', html: 'Evenings can get chilly, so bring a jacket.', text: 'Evenings can get chilly, so bring a jacket.' }
+  ];
+  return buildGuestEmail({
+    subject: 'Traveling to Monterey for our wedding',
+    hello: countdownHello(t),
+    paragraphs: ['We can’t wait to see you in July! Here’s everything you need for the trip.'],
+    body: {
+      html: schedule.html + sectionLabel('Travel tips') + tileGrid(tiles),
+      text: schedule.text + '\n\nTRAVEL TIPS\n' + tilesText(tiles)
+    },
+    buttonText: 'See travel details',
+    link: 'https://jennaliam.info/travel',
+    footnote: 'Things to do while you’re in town',
+    footnoteLink: 'https://jennaliam.info/things-to-do'
+  });
+}
+
+// July 7: "Last chance to update your RSVP"
+function composeLastCallEmail(t) {
+  var rows = t.guests.map(function (g) {
+    var detail = g.attending === 'no' ? 'Can’t make it'
+      : ['Coming'].concat(g.mealChoice ? [g.mealChoice] : [], g.dietaryRestrictions ? ['Dietary notes: ' + g.dietaryRestrictions] : []).join(' · ');
+    return [g.guestName, detail];
+  });
+  if (t.songRequest) rows.push(['Song request', t.songRequest]);
+  if (t.specialSong) rows.push(['Special song', t.specialSong]);
+  var card = '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;margin:8px 0 4px;">' +
+    '<tr><td style="background:#f6f4f0;border-radius:8px;padding:18px;">' +
+      '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 10px;"><tr>' +
+        '<td style="padding:0 8px 0 0;">' + emailIcon('lock', 20) + '</td>' +
+        '<td style="font-size:12px;letter-spacing:1.5px;color:#5c7a4e;font-weight:bold;">LOCKS JULY 14</td></tr></table>' +
+      rows.map(function (r) {
+        return '<div style="border-top:1px solid #e8e4df;padding:10px 0;">' +
+          '<div style="font-size:15px;line-height:21px;color:#2c3e2d;font-weight:bold;">' + escapeHtml(r[0]) + '</div>' +
+          '<div style="font-size:14px;line-height:20px;color:#6b6b6b;">' + escapeHtml(r[1]) + '</div></div>';
+      }).join('') +
+    '</td></tr></table>';
+  return buildGuestEmail({
+    subject: 'Last chance to update your RSVP',
+    hello: countdownHello(t),
+    paragraphs: ['Dinner choices and your other RSVP form answers lock on July 14, so take a quick look and make sure everything’s right.'],
+    body: { html: card, text: rows.map(function (r) { return '  ' + r[0] + ': ' + r[1]; }).join('\n') },
+    buttonText: 'View your RSVP',
+    link: RSVP_PAGE_URL + '?code=' + t.code,
+    footnote: 'Plans changed and someone can’t make it? Just reply to this email.'
+  });
+}
+
+// July 19: "See you this weekend!"
+function composeWeekendEmail(t) {
+  var schedule = scheduleSection(t, 'Schedule');
+  var pickup = SHUTTLE_PICKUP_ADDRESS ? mapLink(SHUTTLE_PICKUP, SHUTTLE_PICKUP_ADDRESS) : escapeHtml(SHUTTLE_PICKUP);
+  var tiles = [
+    { icon: 'sun', title: 'Weather', html: 'Highs around 70°, evenings in the upper 50s.', text: 'Highs around 70°, evenings in the upper 50s.' },
+    { icon: 'shuttle', title: 'Shuttles',
+      html: pickup + ' &middot; ' + escapeHtml(SHUTTLE_TIMES) + '. Rides to and from downtown Monterey.',
+      text: SHUTTLE_PICKUP + ' · ' + SHUTTLE_TIMES + '. Rides to and from downtown Monterey.' }
+  ];
+  var packing = ['A jacket or wrap for the evening', 'Shoes you can dance in', 'Beach things for Sunday’s picnic'];
+  var checklist = '<table role="presentation" cellspacing="0" cellpadding="0" border="0">' + packing.map(function (item) {
+    return '<tr><td valign="middle" style="padding:0 10px 10px 0;">' + emailIcon('check', 22) + '</td>' +
+      '<td valign="middle" style="padding:0 0 10px;font-size:15px;line-height:22px;color:#3a3a3a;">' + escapeHtml(item) + '</td></tr>';
+  }).join('') + '</table>';
+  return buildGuestEmail({
+    subject: 'See you this weekend!',
+    hero: EMAIL_IMAGES + 'weekend-header.jpg',
+    hello: countdownHello(t),
+    paragraphs: ['We’re so excited to see you soon! Here’s what to know for the weekend.'],
+    body: {
+      html: schedule.html + sectionLabel('FYIs') + tileGrid(tiles) + sectionLabel('Don’t forget') + checklist,
+      text: schedule.text + '\n\nFYIS\n' + tilesText(tiles) + '\n\nDON’T FORGET\n' + packing.map(function (p) { return '  ' + p; }).join('\n')
+    },
+    buttonText: 'See the schedule',
+    link: 'https://jennaliam.info/timeline',
+    footnote: 'Questions? Just reply to this email.'
+  });
+}
+
+// Lists who would get each countdown email (if it went out today). Sends nothing.
+function countdownDryRun() {
+  COUNTDOWN_EMAILS.forEach(function (c) {
+    var targets = countdownTargets(c.column);
+    console.log(c.name + ' (' + Utilities.formatDate(c.sendAt, 'America/Los_Angeles', 'MMM d, yyyy') + '): ' + targets.length + ' emails');
+    targets.forEach(function (t) {
+      var rehearsal = t.guests.some(function (g) { return g.attending === 'wedding-and-rehearsal'; });
+      console.log('    ' + t.email + (rehearsal ? '  (sees rehearsal dinner)' : ''));
+    });
+  });
+  console.log('Nothing was sent.');
+}
+
+// Sends you one of each countdown email, using a real RSVP. Sends nothing to guests.
+function countdownPreview() {
+  var me = Session.getActiveUser().getEmail();
+  COUNTDOWN_EMAILS.forEach(function (c) {
+    var targets = countdownTargets(c.column);
+    // Prefer an RSVP going to the rehearsal dinner, so the preview shows every event
+    var t = targets.filter(function (x) { return x.guests.some(function (g) { return g.attending === 'wedding-and-rehearsal'; }); })[0] || targets[0];
+    if (!t) return;
+    var email = c.compose(t);
+    email.subject = '(Preview for ' + t.email + ') ' + email.subject;
+    sendComposedEmail(me, email);
+  });
+  console.log('Sent you a preview of each countdown email. Nothing was sent to guests.');
 }
 
 /* ---------- GET: Look up an RSVP from an email link ---------- */
