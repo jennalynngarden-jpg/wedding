@@ -679,7 +679,7 @@ function notifyNewRsvp(data) {
     subject: subject,
     heading: 'New RSVP',
     counts: counts,
-    intro: name + ' just RSVPed' + (guests.length > 1 ? ' for their party' : '') + ' (' + nowLabel() + ').',
+    intro: name + ' just RSVPed' + (guests.length > 1 ? ' for their party' : '') + '.',
     rows: rows
   }));
 }
@@ -809,16 +809,16 @@ function sendSampleEmails() {
   var counts = rsvpCounts();
   counts.change = { coming: 2, cant: 0 };
   var sample = buildCoupleEmail({ subject: '(Sample) New RSVP: Sample Guest’s party (2 coming)', heading: 'New RSVP', counts: counts,
-    intro: 'Sample Guest just RSVPed for their party (' + nowLabel() + ').',
+    intro: 'Sample Guest just RSVPed for their party.',
     rows: guestSummaryRows(guests) });
   sendComposedEmail(me, sample);
   sendComposedEmail(me, buildCoupleEmail({ subject: '(Sample) RSVP change: Sample Guest’s party', heading: 'RSVP change',
-    intro: 'Sample Guest updated their party’s RSVP (' + nowLabel() + '). Here’s what changed:',
+    intro: 'Sample Guest updated their party’s RSVP on ' + nowLabel() + '. Here’s what changed:',
     rows: [['Sample Plusone', 'Dinner: Chicken → Salmon']],
     closing: 'Everything else stayed the same. Their full RSVP is in the Responses tab.' }));
 }
 
-/* ---------- One-time email: "You can now update your RSVP online" ---------- */
+/* ---------- One-time email: letting earlier guests know they can update their RSVP ---------- */
 // Sent once to everyone who RSVPed before the Your RSVP page existed, so they
 // know they can check and change their RSVP. One email per RSVP, to the
 // address on it. RSVPs from before private links existed get a link code
@@ -912,11 +912,11 @@ function composeAnnouncement(t) {
   if (coming) {
     var answered = !!(t.songRequest || t.specialSong || t.photos || pinForCode(t.code));
     return buildGuestEmail({
-      subject: 'You can now update your RSVP online',
+      subject: 'Your RSVP to Jenna and Liam’s wedding',
       hello: hello,
-      paragraphs: ['Thanks again for RSVPing to our wedding! We just added a way to see your RSVP and make changes yourself, right on our website. Here’s what we have for you:'],
+      paragraphs: ['Thanks again for RSVPing to our wedding! We just added a way to see your RSVP and make changes yourself on our website. Here’s what we have for you:'],
       rows: guestSummaryRows(t.guests, t.songRequest, t.specialSong),
-      closing: ['Need to change something, like a dinner choice? You can do it from your RSVP page.' +
+      closing: ['If you want to change anything, you can do it from your RSVP page.' +
         (answered ? '' : ' You can also answer our optional questions about music, photos, and where you’re traveling from.') +
         ' ' + changeDeadlineText(true)],
       buttonText: 'View your RSVP',
@@ -924,10 +924,10 @@ function composeAnnouncement(t) {
     });
   }
   return buildGuestEmail({
-    subject: 'You can now update your RSVP online',
+    subject: 'Your RSVP to Jenna and Liam’s wedding',
     hello: hello,
-    paragraphs: ['Thanks again for letting us know you can’t make it. We just added a way to see your RSVP and update it yourself, right on our website.'],
-    closing: [changeDeadlineText(false)],
+    paragraphs: ['Thanks again for letting us know you can’t make it to our wedding. We’ll find another time to see each other!'],
+    closing: ['We just added a way to see your RSVP and update it yourself on our website. If your plans change, you can update your RSVP anytime before May 24, 2027.'],
     buttonText: 'Update your RSVP',
     link: link
   });
@@ -1096,7 +1096,7 @@ function updateRsvp(data) {
   var sheet = ss.getSheetByName(RESPONSE_SHEET);
   var guestSheet = ss.getSheetByName(GUEST_SHEET);
   var changes = [];          // [person, "Dinner: Chicken → Salmon"]
-  var comingChange = 0, cantChange = 0, attendanceChanged = false;
+  var comingChange = 0, cantChange = 0, attendanceChanged = false, kidsMealsDropped = 0;
   var info;
 
   var lock = LockService.getScriptLock();
@@ -1131,6 +1131,7 @@ function updateRsvp(data) {
         cantChange += (g.attending === 'no' ? 1 : 0) - (row[4] === 'no' ? 1 : 0);
         attendanceChanged = true;
         row[4] = g.attending;
+        if (!nowComing && /kids/i.test(String(row[5]))) kidsMealsDropped++;
         if (!nowComing && row[5]) {  // no dinner for someone who isn't coming
           sheet.getRange(i + 1, 6).setValue('');
           row[5] = '';
@@ -1207,11 +1208,12 @@ function updateRsvp(data) {
       heading: 'RSVP change',
       counts: counts,
       intro: allCant
-        ? who + ' changed ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' to can’t make it (' + nowLabel() + ').'
-        : who + ' updated ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' (' + nowLabel() + '). Here’s what changed:',
+        ? who + ' changed ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' to can’t make it on ' + nowLabel() + '.'
+        : who + ' updated ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' on ' + nowLabel() + '. Here’s what changed:',
       rows: changes,
       closing: allCant
-        ? 'That’s ' + Math.abs(comingChange) + ' fewer ' + (Math.abs(comingChange) === 1 ? 'guest' : 'guests') + '.'
+        ? 'That’s ' + Math.abs(comingChange) + ' fewer ' + (Math.abs(comingChange) === 1 ? 'guest' : 'guests') +
+          (kidsMealsDropped ? ', including ' + kidsMealsDropped + ' kids’ ' + (kidsMealsDropped === 1 ? 'meal' : 'meals') : '') + '.'
         : 'Everything else stayed the same. Their full RSVP is in the Responses tab.'
     }));
   } catch (err) {
