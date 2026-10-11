@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', function () {
       lat: 36.6016,
       lng: -121.8945,
       address: 'Two Portola Plaza, Monterey',
+      note: 'Our room block: $309/night',
+      featured: true, // bigger pin, drawn on top of its neighbors
       distance: '~15 min drive to venue'
     },
     {
@@ -135,9 +137,10 @@ document.addEventListener('DOMContentLoaded', function () {
     guest:   12
   };
 
-  /* Create a small circle marker icon */
-  function createIcon(category) {
-    var size = markerSizes[category];
+  /* Create a small circle marker icon. Featured spots (our room block hotel)
+     get a bigger dot with a dark green ring so they stand out. */
+  function createIcon(category, featured) {
+    var size = featured ? 16 : markerSizes[category];
     var color = markerColors[category];
     return L.divIcon({
       className: 'map-marker',
@@ -147,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'background:' + color + ';' +
         'border:2px solid #fff;' +
         'border-radius:50%;' +
-        'box-shadow:0 1px 4px rgba(0,0,0,0.3);' +
+        'box-shadow:' + (featured ? '0 0 0 2px #2c3e2d, ' : '') + '0 1px 4px rgba(0,0,0,0.3);' +
       '"></div>',
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
@@ -159,6 +162,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function popupContent(loc) {
     var html = '<strong>' + loc.name + '</strong>' +
                '<span class="map-address">' + loc.address + '</span>';
+    // Extra line for special spots, like our room block hotel
+    if (loc.note) {
+      html += '<span class="map-note">' + loc.note + '</span>';
+    }
     if (loc.distance) {
       html += '<span class="map-distance">' + loc.distance + '</span>';
     }
@@ -238,7 +245,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Add each location as a marker in its category's layer group
   locations.forEach(function (loc) {
-    var marker = L.marker([loc.lat, loc.lng], { icon: createIcon(loc.category) });
+    var marker = L.marker([loc.lat, loc.lng], {
+      icon: createIcon(loc.category, loc.featured),
+      zIndexOffset: loc.featured ? 1000 : 0 // keep featured pins on top
+    });
     marker.bindTooltip(popupContent(loc), { direction: 'top', offset: [0, -8] });
     layerGroups[loc.category].addLayer(marker);
   });

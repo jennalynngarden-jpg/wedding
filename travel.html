@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css?v=117">
+  <link rel="stylesheet" href="css/styles.css?v=125">
 </head>
 <body>
 
@@ -134,13 +134,21 @@
 
         <div class="travel-card">
           <h3>Hotels</h3>
+          <!-- Our room block hotel goes first, with the group rate details -->
+          <div class="travel-item travel-item--block">
+            <!-- Listing on the left, booking button on the right. When the
+                 card is narrow, the button hides and "Book by June 23"
+                 becomes a link instead (see .travel-item--block in styles.css). -->
+            <div class="travel-block-details">
+              <p class="travel-name"><a href="https://www.portolahotel.com/" target="_blank" rel="noopener">Portola Hotel <span class="ampersand">&amp;</span> Spa</a> <span class="travel-badge">Room block</span></p>
+              <p>Two Portola Plaza, Monterey</p>
+              <p>$309/night for July 23 and 24. <span class="travel-book-text">Book by June 23.</span><a class="text-link travel-book-link" href="https://book.passkey.com/go/ParrishGardenWedding2027" target="_blank" rel="noopener">Book by June 23</a></p>
+            </div>
+            <a class="travel-cta" href="https://book.passkey.com/go/ParrishGardenWedding2027" target="_blank" rel="noopener">Book at group rate</a>
+          </div>
           <div class="travel-item">
             <p class="travel-name"><a href="https://www.hotelpacific.com/" target="_blank" rel="noopener">Hotel Pacific</a></p>
             <p>300 Pacific Street, Monterey</p>
-          </div>
-          <div class="travel-item">
-            <p class="travel-name"><a href="https://www.portolahotel.com/" target="_blank" rel="noopener">Portola Hotel <span class="ampersand">&amp;</span> Spa</a></p>
-            <p>Two Portola Plaza, Monterey</p>
           </div>
           <div class="travel-item">
             <p class="travel-name"><a href="https://montereyplazahotel.com/" target="_blank" rel="noopener">Monterey Plaza Hotel</a></p>
@@ -213,8 +221,9 @@
 
         <div class="faq-item">
           <h3 class="faq-question">Is there a hotel room block?</h3>
-          <p class="faq-answer">We looked into doing a hotel room block, but honestly places didn't give us super great deals, so we skipped it. We recommend booking early, as July is peak season in Monterey and hotels fill up quickly.</p>
-          <p class="faq-answer">Airbnbs and VRBO can also be a good option, if you're traveling as a group. There are a lot of them since Monterey is such a popular tourist destination.</p>
+          <p class="faq-answer">Yes! We have a room block at the Portola Hotel &amp; Spa in downtown Monterey, right by Fisherman's Wharf. The group rate is $309 a night (plus tax) for Friday, July 23 and Saturday, July 24. To book, use <a class="text-link" href="https://book.passkey.com/go/ParrishGardenWedding2027" target="_blank" rel="noopener">our group booking link</a> or call the hotel at <a class="text-link" href="tel:+18667111734">1-866-711-1734</a> and mention the Parrish Garden Wedding.</p>
+          <p class="faq-answer">The block has a limited number of rooms, and the group rate is available until June 23, 2027 or until the block fills up. If you want to stay longer after the wedding weekend, the hotel will give you the group rate for extra nights if they have rooms. The days before the wedding will be pricier, though, because of a convention in town (Thursday night is $439, and Wednesday is sold out). If you already booked at the Portola, you'll need to cancel and rebook through our link to get the group rate.</p>
+          <p class="faq-answer">If you'd rather stay somewhere else, we recommend booking early, as July is peak season in Monterey and hotels fill up quickly. Airbnbs and VRBO can also be a good option, if you're traveling as a group. There are a lot of them since Monterey is such a popular tourist destination.</p>
         </div>
 
         <div class="faq-item">
@@ -235,6 +244,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/main.js?v=4"></script>
-  <script src="js/travel-map.js?v=19"></script>
+  <script src="js/travel-map.js?v=21"></script>
 </body>
 </html>

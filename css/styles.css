@@ -609,6 +609,90 @@ p {
   margin-bottom: 0;
 }
 
+/* Room block hotel: a badge next to the name, and the listing and booking
+   button side by side, so it stands apart from the other hotels */
+.travel-item--block {
+  container-type: inline-size; /* lets the rules below react to its width */
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center; /* button sits halfway down the whole listing */
+  gap: 1rem;
+}
+
+.travel-block-details {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The pill. Capital letters have nothing hanging below the line, so the
+   text is set in a tight box (line-height 1) with even padding, and nudged
+   down a hair so the letters look centered, not top-heavy. */
+.travel-badge {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: 0.2em;
+  margin-left: 0.4rem;
+  padding: 0.41em 0.75em 0.27em;
+  border-radius: 999px;
+  background: var(--color-sage-light);
+  color: var(--color-sage-hover);
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.travel-cta {
+  flex: 0 0 auto;
+  padding: 0.625rem 1rem 0.575rem; /* a hair more on top so the capitals look centered */
+  border-radius: 6px;
+  background: var(--color-heading);
+  color: #ffffff;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.travel-cta:hover {
+  background: var(--color-sage-hover);
+}
+
+/* Wide: plain "Book by June 23." text plus the button.
+   Narrow (phones, and the three-across cards on big screens): no button,
+   and "Book by June 23" becomes the link. */
+.travel-book-link {
+  display: none;
+}
+
+@container (max-width: 480px) {
+  .travel-cta,
+  .travel-book-text {
+    display: none;
+  }
+
+  .travel-book-link {
+    display: inline;
+    white-space: nowrap; /* keep "Book by June 23" together on one line */
+  }
+}
+
+/* Links inside regular text (links have no underline by default) */
+.text-link {
+  color: var(--color-sage-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.text-link:hover {
+  color: var(--color-heading);
+}
+
 /* ---------- 10a. Travel FAQs ---------- */
 .travel-faqs {
   padding-top: 1rem;
@@ -790,6 +874,14 @@ p {
   display: block;
   font-size: 0.82rem;
   color: var(--color-text);
+}
+
+.leaflet-tooltip .map-note {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-sage-hover);
+  margin-top: 0.3rem;
 }
 
 .leaflet-tooltip .map-distance {
