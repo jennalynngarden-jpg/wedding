@@ -662,7 +662,7 @@ function notifyCouple(email) {
     console.log('NOTIFY_EMAILS isn’t set in Script properties, so no notification was sent.');
     return;
   }
-  sendComposedEmail(to, email);
+  sendOrQueue(to, email);
 }
 
 function nowLabel() {
@@ -717,6 +717,61 @@ function emailButton(text, link, margin, outline) {
         'font-size:13px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:' + color + ';text-decoration:none;border-radius:6px;">' +
         escapeHtml(text) + '</a>' +
     '</td></tr></table>';
+}
+
+/* ---------- Email outbox: nothing gets lost if Gmail says "not right now" ---------- */
+// Gmail lets a script email about 100 people a day, counted over the last 24
+// hours. If an email can't go out, it waits in a hidden "Email outbox" tab in
+// the RSVP spreadsheet instead of being dropped. The 10-minute timer
+// (sendPendingEmails) sends waiting emails, oldest first, as soon as Gmail
+// allows. (RSVP confirmations don't need this: they're rebuilt from the
+// Responses tab and the timer retries them on its own.)
+var OUTBOX_SHEET = 'Email outbox';
+
+// Sends an email now, or saves it to the outbox if Gmail won't send it yet
+function sendOrQueue(to, email) {
+  try {
+    sendComposedEmail(to, email);
+    return true;
+  } catch (err) {
+    console.error('Email to ' + to + ' is waiting in the outbox: ' + err);
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(OUTBOX_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(OUTBOX_SHEET);
+      sheet.appendRow(['Waiting since', 'To', 'Subject', 'Plain text', 'HTML', 'Tries', 'Last error']);
+      sheet.hideSheet();
+    }
+    sheet.appendRow([new Date(), to, email.subject, email.text, email.html, 1, String(err)]);
+    return false;
+  }
+}
+
+// Sends what's waiting in the outbox, oldest first. Stops at the first email
+// Gmail refuses (it's still at its limit). Returns true if the outbox is empty.
+function sendOutbox() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(OUTBOX_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return true;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return false;  // another check is already sending
+  try {
+    var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+    var sent = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      try {
+        sendComposedEmail(r[1], { subject: r[2], text: r[3], html: r[4] });
+        sent++;
+      } catch (err) {
+        sheet.getRange(i + 2, 6, 1, 2).setValues([[Number(r[5]) + 1, String(err)]]);
+        break;
+      }
+    }
+    if (sent) sheet.deleteRows(2, sent);  // the ones that went out (always the oldest)
+    return sent === rows.length;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function sendComposedEmail(to, email) {
@@ -794,6 +849,7 @@ function sendConfirmation(data) {
 // email that's been waiting longer than PENDING_EMAIL_MINUTES, for guests
 // who left the page without finishing or skipping the optional questions.
 function sendPendingEmails() {
+  if (!sendOutbox()) return;  // Gmail is still at its limit, so try again next time
   var rows = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
   var cutoff = new Date().getTime() - PENDING_EMAIL_MINUTES * 60 * 1000;
   var done = {};
@@ -806,6 +862,7 @@ function sendPendingEmails() {
       sendConfirmationForCode(code, false);
     } catch (err) {
       console.error('Pending RSVP email failed: ' + err);
+      return;  // most likely Gmail's daily limit, so stop until the next check
     }
   }
 }
@@ -1356,7 +1413,7 @@ function updateRsvp(data) {
   var anyoneComing = info.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
   try {
     if (info.email) {
-      sendComposedEmail(info.email, composeUpdateEmail({
+      sendOrQueue(info.email, composeUpdateEmail({
         firstName: String(info.submitter.guestName).split(' ')[0],
         guests: info.guests, songRequest: info.songRequest, specialSong: info.specialSong,
         link: RSVP_PAGE_URL + '?code=' + code
@@ -1451,7 +1508,8 @@ function sendRsvpLink(data) {
     if (values[i][2] === row[8]) firstName = String(values[i][3]).split(' ')[0];
     if (values[i][4] && values[i][4] !== 'no') anyoneComing = true;
   }
-  sendComposedEmail(row[10], composeLinkEmail({ firstName: firstName, anyoneComing: anyoneComing, link: RSVP_PAGE_URL + '?code=' + code }));
+  // If Gmail can't send it right now, it waits in the outbox and goes out soon
+  sendOrQueue(row[10], composeLinkEmail({ firstName: firstName, anyoneComing: anyoneComing, link: RSVP_PAGE_URL + '?code=' + code }));
   return jsonResponse({ success: true });
 }
 
