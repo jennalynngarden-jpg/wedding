@@ -502,7 +502,7 @@ function composeEmail(info) {
       paragraphs: ['Thanks for RSVPing! Here’s what we have for you:'],
       rows: guestSummaryRows(info.guests, info.songRequest, info.specialSong),
       closing: [closing],
-      buttonText: editable ? 'View or update your RSVP' : 'View your RSVP',
+      buttonText: 'View your RSVP',
       link: info.link
     });
   }
@@ -529,7 +529,7 @@ function composeUpdateEmail(info) {
       paragraphs: ['Your changes are saved. Here’s your updated RSVP:'],
       rows: guestSummaryRows(info.guests, info.songRequest, info.specialSong),
       closing: [changeDeadlineText(true)],
-      buttonText: editable ? 'View or update your RSVP' : 'View your RSVP',
+      buttonText: 'View your RSVP',
       link: info.link
     });
   }
@@ -552,7 +552,7 @@ function composeLinkEmail(info) {
     hello: info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,',
     paragraphs: ['Here’s your private link to see your RSVP to our wedding and make changes.'],
     closing: [changeDeadlineText(info.anyoneComing)],
-    buttonText: 'View or update your RSVP',
+    buttonText: 'View your RSVP',
     link: info.link
   });
 }
@@ -816,6 +816,183 @@ function sendSampleEmails() {
     intro: 'Sample Guest updated their party’s RSVP (' + nowLabel() + '). Here’s what changed:',
     rows: [['Sample Plusone', 'Dinner: Chicken → Salmon']],
     closing: 'Everything else stayed the same. Their full RSVP is in the Responses tab.' }));
+}
+
+/* ---------- One-time email: "You can now update your RSVP online" ---------- */
+// Sent once to everyone who RSVPed before the Your RSVP page existed, so they
+// know they can check and change their RSVP. One email per RSVP, to the
+// address on it. RSVPs from before private links existed get a link code
+// first (Responses column L). To use it, in the Apps Script editor pick one of these in
+// the function menu at the top, then click Run:
+//   1. announceDryRun:  lists who would get it (see the Execution log at the
+//                       bottom). Sends nothing.
+//   2. announcePreview: sends YOU one sample of each version (using real
+//                       RSVPs). Sends nothing to guests.
+//   3. announceSendAll: sends it to everyone on the list. Each RSVP is marked
+//                       in the "announced" column (Responses column O), so
+//                       running it again never emails anyone twice. If Gmail's
+//                       daily limit stops it partway, run it again tomorrow.
+var ANNOUNCED_COLUMN = 15;  // Responses column O
+// Only RSVPs from before the new emails started (October 11, 2026, Pacific
+// time). Anyone who RSVPs after that already got a link in their confirmation.
+var ANNOUNCE_BEFORE = new Date('2026-10-11T07:00:00Z');
+
+// Older RSVPs (from before private links existed) have no code. Their rows
+// were saved together, so they share a time, party, and submitter.
+function rsvpGroupKey(r) {
+  return 'old:' + new Date(r[0]).getTime() + '|' + r[1] + '|' + r[8];
+}
+
+// Gives every older RSVP its own private link code (Responses column L).
+// Returns how many RSVPs got one. (Leaves the email status column alone, so
+// no old confirmation emails are sent.)
+function addMissingCodes() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    var values = sheet.getDataRange().getValues();
+    var codes = {}, added = 0;
+    for (var i = 1; i < values.length; i++) {
+      var r = values[i];
+      if (!r[2] || r[CODE_COLUMN - 1]) continue;
+      var key = rsvpGroupKey(r);
+      if (!codes[key]) {
+        codes[key] = Utilities.getUuid().replace(/-/g, '');
+        added++;
+      }
+      sheet.getRange(i + 1, CODE_COLUMN).setValue(codes[key]);
+    }
+    SpreadsheetApp.flush();
+    return added;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Everyone who should get the one-time email (and hasn't yet)
+function announcementTargets() {
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var byCode = {}, order = [];
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (!r[2]) continue;
+    var code = r[CODE_COLUMN - 1] || rsvpGroupKey(r);  // (older RSVP: no code yet)
+    if (!byCode[code]) {
+      byCode[code] = { code: code, partyId: r[1], submittedBy: r[8], email: String(r[10] || '').trim(), when: new Date(r[0]),
+        guests: [], rows: [], songRequest: '', specialSong: '', photos: '', announced: false };
+      order.push(code);
+    }
+    var t = byCode[code];
+    t.rows.push(i + 1);
+    t.guests.push({ guestId: r[2], guestName: r[3], attending: r[4], mealChoice: r[5], dietaryRestrictions: r[6] });
+    t.songRequest = t.songRequest || r[7];
+    t.specialSong = t.specialSong || r[9];
+    t.photos = t.photos || r[PHOTOS_COLUMN - 1];
+    if (r[ANNOUNCED_COLUMN - 1]) t.announced = true;
+  }
+  // If the same person RSVPed for the same party more than once, only their
+  // latest RSVP gets the email
+  var latest = {};
+  order.forEach(function (code) {
+    var t = byCode[code];
+    if (t.email) latest[t.email.toLowerCase() + '|' + t.partyId] = code;
+  });
+  return order.map(function (code) { return byCode[code]; }).filter(function (t) {
+    return t.email && !t.announced && t.when < ANNOUNCE_BEFORE &&
+      latest[t.email.toLowerCase() + '|' + t.partyId] === t.code;
+  });
+}
+
+function composeAnnouncement(t) {
+  var coming = t.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+  var submitter = t.guests.filter(function (g) { return g.guestId === t.submittedBy; })[0] || t.guests[0];
+  var hello = submitter ? 'Hi ' + String(submitter.guestName).split(' ')[0] + ',' : 'Hi there,';
+  var link = RSVP_PAGE_URL + '?code=' + t.code;
+  if (coming) {
+    var answered = !!(t.songRequest || t.specialSong || t.photos || pinForCode(t.code));
+    return buildGuestEmail({
+      subject: 'You can now update your RSVP online',
+      hello: hello,
+      paragraphs: ['Thanks again for RSVPing to our wedding! We just added a way to see your RSVP and make changes yourself, right on our website. Here’s what we have for you:'],
+      rows: guestSummaryRows(t.guests, t.songRequest, t.specialSong),
+      closing: ['Need to change something, like a dinner choice? You can do it from your RSVP page.' +
+        (answered ? '' : ' You can also answer our optional questions about music, photos, and where you’re traveling from.') +
+        ' ' + changeDeadlineText(true)],
+      buttonText: 'View your RSVP',
+      link: link
+    });
+  }
+  return buildGuestEmail({
+    subject: 'You can now update your RSVP online',
+    hello: hello,
+    paragraphs: ['Thanks again for letting us know you can’t make it. We just added a way to see your RSVP and update it yourself, right on our website.'],
+    closing: [changeDeadlineText(false)],
+    buttonText: 'Update your RSVP',
+    link: link
+  });
+}
+
+// 1. Lists who would get it. Changes nothing and sends nothing.
+function announceDryRun() {
+  var targets = announcementTargets();
+  var needCodes = targets.filter(function (t) { return t.code.indexOf('old:') === 0; }).length;
+  targets.forEach(function (t) {
+    var coming = t.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+    console.log((coming ? 'Coming        ' : 'Can’t make it ') + t.email + '  (' +
+      t.guests.map(function (g) { return g.guestName; }).join(', ') + ')');
+  });
+  console.log(targets.length + ' emails would be sent. ' + needCodes +
+    ' of these are older RSVPs that will get a private link code first. (Nothing was changed or sent.)');
+  // RSVPs with no email address can't get it
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var noEmail = {};
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (r[2] && !String(r[10] || '').trim()) {
+      var k = r[CODE_COLUMN - 1] || rsvpGroupKey(r);
+      (noEmail[k] = noEmail[k] || []).push(r[3]);
+    }
+  }
+  Object.keys(noEmail).forEach(function (k) { console.log('No email address, so skipped: ' + noEmail[k].join(', ')); });
+}
+
+// 2. Sends you one sample of each version, using real RSVPs. Sends nothing to guests.
+function announcePreview() {
+  var me = Session.getActiveUser().getEmail();
+  addMissingCodes();  // the preview's button needs a real link
+  var targets = announcementTargets();
+  var coming = targets.filter(function (t) { return t.guests.some(function (g) { return g.attending && g.attending !== 'no'; }); })[0];
+  var cant = targets.filter(function (t) { return !t.guests.some(function (g) { return g.attending && g.attending !== 'no'; }); })[0];
+  [coming, cant].forEach(function (t) {
+    if (!t) return;
+    var email = composeAnnouncement(t);
+    email.subject = '(Preview for ' + t.email + ') ' + email.subject;
+    sendComposedEmail(me, email);
+  });
+  console.log('Sent you ' + [coming, cant].filter(Boolean).length + ' preview(s). Nothing was sent to guests.');
+}
+
+// 3. Sends it to everyone on the list, marking each RSVP as it goes
+function announceSendAll() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+  if (!sheet.getRange(1, ANNOUNCED_COLUMN).getValue()) sheet.getRange(1, ANNOUNCED_COLUMN).setValue('announced');
+  addMissingCodes();
+  var targets = announcementTargets();
+  var sent = 0;
+  for (var i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    try {
+      sendComposedEmail(t.email, composeAnnouncement(t));
+    } catch (err) {
+      console.log('Stopped after ' + sent + ' emails: ' + err + '. Run announceSendAll again tomorrow to send the rest (no one gets it twice).');
+      return;
+    }
+    t.rows.forEach(function (row) { sheet.getRange(row, ANNOUNCED_COLUMN).setValue(new Date()); });
+    SpreadsheetApp.flush();
+    sent++;
+  }
+  console.log('Sent ' + sent + ' emails. Everyone on the list has it now.');
 }
 
 /* ---------- GET: Look up an RSVP from an email link ---------- */
