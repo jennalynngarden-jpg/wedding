@@ -5487,3 +5487,41 @@ a.pin-undo-btn[hidden] {
 #step-already .decline-small {
   margin-top: 2.25rem;
 }
+
+/* Secondary button: outlined, for a lone secondary action (like "Resend
+   email"). Even padding on both sides, so it centers properly. */
+.step-btn--secondary {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-light);
+}
+
+.step-btn--secondary:hover {
+  background: var(--color-sage-light);
+  border-color: var(--color-sage);
+  color: var(--color-sage-hover);
+}
+
+/* "Thanks for sharing!" screen: the invitation to add a map pin */
+.confirm-pin {
+  margin: 0.25rem 0 0;
+  animation: confirm-later-in 0.5s ease both;
+  animation-delay: 0.3s;
+}
+
+.confirm-pin .step-nav {
+  margin-top: 1.25rem;
+}
+
+.confirm-pin a.step-btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
+#step-confirmation .confirm-pin[hidden] {
+  display: none;
+}
+
+#summary-heading[hidden] {
+  display: none;
+}

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=114">
+  <link rel="stylesheet" href="css/styles.css?v=117">
 </head>
 <body>
 
@@ -36,7 +36,7 @@
 
   <main>
     <section class="content-section rsvp-section">
-      <h2 class="section-heading">RSVP</h2>
+      <h2 class="section-heading" id="rsvp-title">RSVP</h2>
       <div class="section-divider"></div>
       <p class="section-intro" id="rsvp-intro">Let us know if you'll be joining us by <strong>May 24, 2027</strong>.</p>
       <p class="section-intro">We would love to celebrate with you, but we also know that life is busy and this is a big trip for some. Whatever you decide, we are grateful for your love and friendship!</p>
@@ -184,17 +184,6 @@
           </div>
         </div>
 
-        <!-- Part 2: Guest map pin (last optional step). "Add your pin" opens the
-             map on the Travel page; everything before it is already saved. -->
-        <div class="rsvp-step" id="step-pin">
-          <h3 class="step-heading">Add your pin</h3>
-          <p class="step-description">Show us where you&rsquo;re traveling from on our guest map.</p>
-          <div class="step-nav step-nav--center">
-            <button type="button" class="step-btn step-btn--skip">Skip</button>
-            <a href="travel.html?addpin=true" class="step-btn step-btn--next pin-step-link">Add your pin</a>
-          </div>
-        </div>
-
         <!-- Your RSVP: what a guest told us, with ways to change it. Opened from
              the button in their emails (rsvp.html?code=...). The cards are
              built by renderSummary() in rsvp.js. -->
@@ -223,9 +212,9 @@
           <p class="step-description" id="already-text">Want to see your RSVP or make changes? We&rsquo;ll email a private link to the address used for your RSVP.</p>
           <div class="step-nav step-nav--center" id="already-buttons">
             <button type="button" class="step-btn step-btn--back" id="already-back">Search again</button>
-            <button type="button" class="step-btn step-btn--next" id="already-send">Email me a link</button>
+            <button type="button" class="step-btn step-btn--next" id="already-send">Email link</button>
           </div>
-          <p class="step-description decline-small">Don&rsquo;t have that email anymore? Write to us at <a href="mailto:jennaliam2027@gmail.com">jennaliam2027@gmail.com</a> and we&rsquo;ll help.</p>
+          <p class="step-description decline-small">Don&rsquo;t use that email anymore? Reach out to us at <a href="mailto:jennaliam2027@gmail.com">jennaliam2027@gmail.com</a> and we&rsquo;ll help.</p>
         </div>
 
         <div class="rsvp-step" id="step-link-sent" style="display:none;">
@@ -236,9 +225,9 @@
             <path d="M46.5 13.2 L49.8 16.5 L55.8 10"/>
           </svg>
           <h3 class="step-heading">Check your email</h3>
-          <p class="step-description" id="link-sent-text">We sent you a link. It can take a few minutes to arrive, so check your spam folder too.</p>
+          <p class="step-description" id="link-sent-text">We sent you a link. It might take a few minutes to arrive. If you don&rsquo;t see it, check your spam folder too.</p>
           <div class="step-nav step-nav--center">
-            <button type="button" class="step-btn step-btn--back" id="link-resend">Send it again</button>
+            <button type="button" class="step-btn step-btn--secondary" id="link-resend">Resend email</button>
           </div>
         </div>
 
@@ -389,6 +378,15 @@
             <a href="travel.html" class="step-btn step-btn--next">Get travel tips</a>
           </div>
 
+          <!-- "Thanks for sharing!" version: invite them to add their pin to the
+               guest map (opens the Travel page; the pin is linked to their RSVP) -->
+          <div class="confirm-pin" id="confirm-pin" hidden>
+            <p class="step-description">Show us where you&rsquo;re traveling from on our guest map.</p>
+            <div class="step-nav step-nav--center">
+              <a href="travel.html?addpin=true" class="step-btn step-btn--next pin-step-link">Add your pin</a>
+            </div>
+          </div>
+
           <!-- Invitation into the optional questions (part 2) -->
           <div class="extras-invite" id="extras-invite">
             <p class="step-description">Have a couple more minutes? We&rsquo;d love your answers to a few optional questions about music, photos, and where you&rsquo;re traveling from.</p>
@@ -432,6 +430,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/rsvp.js?v=42"></script>
+  <script src="js/rsvp.js?v=46"></script>
 </body>
 </html>

@@ -548,10 +548,10 @@ function composeUpdateEmail(info) {
 // person who RSVPed.
 function composeLinkEmail(info) {
   return buildGuestEmail({
-    subject: 'Your link to view or update your RSVP',
+    subject: 'View or update your RSVP',
     hello: info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,',
     paragraphs: ['Here’s your private link to see your RSVP to our wedding and make changes.'],
-    closing: [changeDeadlineText(info.anyoneComing), 'Didn’t ask for this link? You can ignore this email.'],
+    closing: [changeDeadlineText(info.anyoneComing)],
     buttonText: 'View or update your RSVP',
     link: info.link
   });
@@ -617,14 +617,24 @@ function buildCoupleEmail(e) {
         (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
         (e.closing ? '<p>' + escapeHtml(e.closing) + '</p>' : '') +
         '<p style="text-align:center;margin:24px 0 8px;">' +
-          '<a href="' + SHEET_URL + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">Open RSVP sheet</a></p>' +
+          '<a href="' + responsesTabUrl() + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">Open RSVP sheet</a></p>' +
       '</div>' +
     '</div>';
   var text = e.heading + '\n\n' +
     (c ? 'Coming: ' + c.coming + ' · Can’t make it: ' + c.cant + ' · No RSVP yet: ' + c.waiting + '\n\n' : '') +
     e.intro + (e.rows || []).map(function (r) { return '\n  ' + r[0] + ': ' + r[1]; }).join('') +
-    (e.closing ? '\n\n' + e.closing : '') + '\n\nRSVP sheet: ' + SHEET_URL;
+    (e.closing ? '\n\n' + e.closing : '') + '\n\nRSVP sheet: ' + responsesTabUrl();
   return { subject: e.subject, text: text, html: html };
+}
+
+// A link straight to the Responses tab of the RSVP sheet
+function responsesTabUrl() {
+  try {
+    var tab = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+    return SHEET_URL + '#gid=' + tab.getSheetId();
+  } catch (e) {
+    return SHEET_URL;
+  }
 }
 
 // Sends an email to Jenna & Liam (if their addresses are set up)

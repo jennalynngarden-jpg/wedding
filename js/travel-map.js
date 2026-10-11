@@ -375,13 +375,16 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(function (data) {
         if (data.pins && data.pins.length > 0) {
           data.pins.forEach(function (pin) {
-            // If pin doesn't have a city, look it up
+            // Every pin goes on the map right away (so the map can zoom to
+            // fit them all). If a pin doesn't have a saved city, look it up
+            // and add it to the pin's popup once it arrives.
+            var marker = addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, pin.city);
             if (!pin.city) {
               getCityFromCoords(pin.lat, pin.lng, function (city) {
-                addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, city);
+                if (!city) return;
+                marker.city = city;
+                marker.setPopupContent(guestPopupContent(pin.name, city));
               });
-            } else {
-              addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, pin.city);
             }
           });
           // If the guests view is already showing (like from the RSVP link),

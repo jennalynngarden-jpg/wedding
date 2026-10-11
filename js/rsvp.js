@@ -60,7 +60,7 @@
     if (state.partnershipStatus === 'married' || state.partnershipStatus === 'partner') {
       flow.push('special-song');
     }
-    flow.push('songs', 'photo', 'pin');
+    flow.push('songs', 'photo');
     state.stepFlow = flow;
   }
 
@@ -786,9 +786,14 @@
     var anyoneComing = coming.length > 0;
     var partnered = state.partnershipStatus === 'married' || state.partnershipStatus === 'partner';
 
-    // Heading and subheader
-    document.getElementById('summary-check').hidden = !opts.saved;
-    document.getElementById('summary-heading').textContent = opts.saved ? 'Changes saved!' : 'Your RSVP';
+    // The page's title becomes "Your RSVP" (instead of "RSVP"). The smaller
+    // heading only shows after a save: "Changes saved!" with a checkmark.
+    document.getElementById('rsvp-title').textContent = 'Your RSVP';
+    // (It's a drawing, so the hidden attribute is set directly)
+    document.getElementById('summary-check').toggleAttribute('hidden', !opts.saved);
+    var summaryHeading = document.getElementById('summary-heading');
+    summaryHeading.textContent = 'Changes saved!';
+    summaryHeading.hidden = !opts.saved;
     var sub, small = 'Questions? Reply to your confirmation email and we’ll help.';
     if (opts.saved) {
       sub = 'We’ve emailed you an updated copy of your RSVP.';
@@ -1154,10 +1159,10 @@
     postToScript({ action: 'sendRsvpLink', guestId: guest.guestId })
       .then(function () {
         document.getElementById('link-sent-text').textContent = 'We sent a link to ' + (state.alreadyMasked || 'your email') +
-          '. It can take a few minutes to arrive, so check your spam folder too.';
+          '. It might take a few minutes to arrive. If you don\u2019t see it, check your spam folder too.';
         if (isResend) {
-          btn.textContent = 'Sent again';
-          setTimeout(function () { btn.textContent = 'Send it again'; btn.disabled = false; }, 4000);
+          btn.textContent = 'Email resent';
+          setTimeout(function () { btn.textContent = 'Resend email'; btn.disabled = false; }, 4000);
         } else {
           btn.disabled = false;
           showScreen('step-link-sent');
@@ -1870,7 +1875,7 @@
     return send().catch(function () { return send(); }).catch(function () {});
   }
 
-  // Move to the next part 2 step, or finish if this was the last one
+  // Move to the next part 2 step, or finish after the last one (photos)
   function nextExtrasStep() {
     var next = getNextStep();
     if (next) {
@@ -1881,7 +1886,7 @@
   }
 
   // "Continue" on the photo step: upload the chosen photos one at a time
-  // (showing progress), then move on to the last step (the guest map pin).
+  // (showing progress), then finish (the "Thanks for sharing!" screen).
   // Photos that upload are taken off the list right away, so if some fail,
   // trying again only resends the ones that didn't make it.
   function continueFromPhoto() {
@@ -1945,10 +1950,9 @@
     }, true).catch(function () {});  // if this fails, the script's timer sends it later
   }
 
-  // End of part 2 (skipping the pin step): back to the confirmation screen,
-  // now the "Thanks for sharing!" version with the dancing couple. ("Add
-  // your pin" instead goes to the Travel page; everything they shared is
-  // already saved by then.)
+  // End of part 2 (after the photo step): back to the confirmation screen,
+  // now the "Thanks for sharing!" version with the dancing couple, which
+  // invites them to add their pin to the guest map.
   function finishExtras() {
     sendConfirmationEmail(true);
     setConfirmation('finished');
@@ -1989,6 +1993,7 @@
     document.getElementById('extras-invite').hidden = version !== 'rsvp';
     document.getElementById('confirm-later-note').hidden = version !== 'later';
     document.getElementById('confirm-later-cta').hidden = version !== 'later';
+    document.getElementById('confirm-pin').hidden = version !== 'finished';
   }
 
   // "Maybe later": the invite fades out, then the emailed-link note and the
@@ -2283,8 +2288,8 @@
     // Part 2's photo step uploads before moving on
     document.getElementById('photo-continue').addEventListener('click', continueFromPhoto);
 
-    // "Add your pin" (last optional step) opens the Travel page; send the
-    // confirmation email on the way out
+    // "Add your pin" (on the "Thanks for sharing!" screen) opens the Travel
+    // page; send the confirmation email on the way out (if it hasn't gone yet)
     document.querySelector('.pin-step-link').addEventListener('click', function () {
       // Remember the name they searched for, so the map can label their pin
       // without asking again. (Kept in this browser tab only, never sent
