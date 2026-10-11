@@ -513,7 +513,9 @@ function composeEmail(info) {
       rows: guestSummaryRows(info.guests, info.songRequest, info.specialSong),
       closing: [closing],
       buttonText: 'View your RSVP',
-      link: info.link
+      link: info.link,
+      extra: new Date() < ROOM_BLOCK_CUTOFF ?
+        roomBlockSection('Looking for a place to stay? We have a room block at the Portola Hotel & Spa in downtown Monterey, right by Fisherman’s Wharf.') : null
     });
   }
   return buildGuestEmail({
@@ -1075,10 +1077,14 @@ function isComing(t) {
   return t.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
 }
 
-// The room block section: three photos, the details, and a booking button
-function roomBlockSection() {
-  var details = 'Also, some good news: we now have a room block at the Portola Hotel & Spa in downtown Monterey, ' +
-    'right by Fisherman’s Wharf. The group rate is $309 a night (plus tax) for Friday, July 23 and Saturday, July 24. ' +
+// After this, the room block is over, so emails stop mentioning it
+var ROOM_BLOCK_CUTOFF = new Date('2027-06-24T07:00:00Z');  // midnight after June 23, Pacific
+
+// The room block section: an intro line, three photos, the details, and a
+// booking button. Shown in yes RSVP confirmations until the cutoff.
+//   intro: the first line (it reads differently depending on the email)
+function roomBlockSection(intro) {
+  var details = 'The group rate is $309 a night (plus tax) for Friday, July 23 and Saturday, July 24. ' +
     'Rooms are limited, so book by June 23, 2027.';
   var note = 'Already booked at the Portola? Cancel and rebook through our link to get the group rate.';
   var photos = ROOM_BLOCK_PHOTOS.map(function (p, i) {
@@ -1087,13 +1093,15 @@ function roomBlockSection() {
         'style="display:block;width:100%;height:auto;border:0;border-radius:6px;"></td>';
   }).join('');
   var html =
-    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px;"><tr>' + photos + '</tr></table>' +
-    '<p style="color:#5c7a4e;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 4px;">Room block</p>' +
-    '<p style="font-family:Georgia,serif;font-size:19px;color:#2c3e2d;margin:0 0 8px;">Portola Hotel &amp; Spa</p>' +
+    '<p>' + escapeHtml(intro) + '</p>' +
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px;"><tr>' + photos + '</tr></table>' +
     '<p style="margin:0 0 8px;">' + escapeHtml(details) + '</p>' +
     '<p style="color:#6b6b6b;font-size:13px;line-height:1.5;margin:0;">' + escapeHtml(note) + '</p>' +
-    emailButton('Book at group rate', ROOM_BLOCK_URL, '20px auto 24px', true);
-  var text = 'ROOM BLOCK: Portola Hotel & Spa\n' + details + '\n' + note + '\nBook at group rate: ' + ROOM_BLOCK_URL;
+    emailButton('Book at group rate', ROOM_BLOCK_URL, '20px auto 10px', true) +
+    '<p style="text-align:center;color:#6b6b6b;font-size:13px;margin:0 0 24px;">More on hotels and getting around: ' +
+      '<a href="https://jennaliam.info/travel" style="color:#5c7a4e;text-decoration:underline;">jennaliam.info/travel</a></p>';
+  var text = intro + '\n' + details + '\n' + note + '\nBook at group rate: ' + ROOM_BLOCK_URL +
+    '\nMore on hotels and getting around: https://jennaliam.info/travel';
   return { html: html, text: text };
 }
 
@@ -1108,7 +1116,7 @@ function composeFollowUp(t) {
     buttonText: coming ? 'View your RSVP' : 'Update your RSVP',
     link: RSVP_PAGE_URL + '?code=' + t.code,
     buttonNote: 'If the button still doesn’t open, copy this link into your browser:',
-    extra: coming ? roomBlockSection() : null
+    extra: coming ? roomBlockSection('Also, some good news: we now have a room block at the Portola Hotel & Spa in downtown Monterey, right by Fisherman’s Wharf.') : null
   });
 }
 
