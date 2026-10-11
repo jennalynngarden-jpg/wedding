@@ -5482,3 +5482,8 @@ a.pin-undo-btn {
 a.pin-undo-btn[hidden] {
   display: none;
 }
+
+/* Already RSVPed: more room between the buttons and the note below them */
+#step-already .decline-small {
+  margin-top: 2.25rem;
+}
