@@ -696,6 +696,7 @@ p {
 /* ---------- 10a. Travel FAQs ---------- */
 .travel-faqs {
   padding-top: 1rem;
+  scroll-margin-top: var(--nav-height); /* so a link to #faqs isn't hidden under the menu bar */
 }
 
 .faq-list {

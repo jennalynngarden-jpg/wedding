@@ -1484,8 +1484,8 @@ function composeWeekendEmail(t) {
       html: schedule.html + sectionLabel('FYIs') + tileGrid(tiles) + sectionLabel('Don’t forget') + checklist,
       text: schedule.text + '\n\nFYIS\n' + tilesText(tiles) + '\n\nDON’T FORGET\n' + packing.map(function (p) { return '  ' + p; }).join('\n')
     },
-    buttonText: 'See the schedule',
-    link: 'https://jennaliam.info/timeline',
+    buttonText: 'See all FAQs',
+    link: 'https://jennaliam.info/travel#faqs',
     footnote: 'Questions? Just reply to this email.'
   });
 }
