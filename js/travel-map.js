@@ -372,6 +372,9 @@ document.addEventListener('DOMContentLoaded', function () {
               addGuestMarker(pin.name, pin.lat, pin.lng, pin.pinId, pin.city);
             }
           });
+          // If the guests view is already showing (like from the RSVP link),
+          // zoom out to fit everyone's pins
+          if (showGuestsFromLink && activeCategories.guest) fitToVisible();
         }
       })
       .catch(function (err) {
@@ -473,14 +476,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Pin placement workflow ---------- */
 
+  // The name a guest searched for on the RSVP page, if they came here from
+  // its "Add your pin" step (saved in this browser tab only)
+  function rememberedRsvpName() {
+    try {
+      return sessionStorage.getItem('rsvpPinName') || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  // The banner's original wording (used when we don't know their name)
+  var pinFormHeader = pinForm ? pinForm.querySelector('.pin-form-header') : null;
+  var pinFormSubheader = pinForm ? pinForm.querySelector('.pin-form-subheader') : null;
+  var defaultHeader = pinFormHeader ? pinFormHeader.textContent : '';
+  var defaultSubheader = pinFormSubheader ? pinFormSubheader.textContent : '';
+
+  // Open the "Show us where you're traveling from!" banner. If they just
+  // RSVPed, we already know their name: greet them by first name and hide the
+  // name box (the name is still used for their pin). Either way, they tap
+  // "Place your pin" to start, so they know what's about to happen.
+  function showPinForm() {
+    addPinBtn.style.display = 'none';
+    pinForm.classList.add('active');
+    var knownName = rememberedRsvpName();
+    if (knownName) {
+      pinNameInput.value = knownName;
+      pinNameInput.style.display = 'none';
+      pinFormHeader.textContent = 'Hi ' + knownName.split(' ')[0] + '! Show us where you\u2019re traveling from.';
+      pinFormSubheader.textContent = 'Drop a pin on the map to show other guests where you\u2019re coming from. You can search for your city once you start.';
+      pinConfirmBtn.focus();
+    } else {
+      pinNameInput.value = '';
+      pinNameInput.style.display = '';
+      pinFormHeader.textContent = defaultHeader;
+      pinFormSubheader.textContent = defaultSubheader;
+      pinNameInput.focus();
+    }
+  }
+
   // Step 1: User clicks "Add your pin" button
   if (addPinBtn) {
-    addPinBtn.addEventListener('click', function () {
-      addPinBtn.style.display = 'none';
-      pinForm.classList.add('active');
-      pinNameInput.value = '';
-      pinNameInput.focus();
-    });
+    addPinBtn.addEventListener('click', showPinForm);
   }
 
   // Cancel button (in the name form)
@@ -563,9 +600,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Center-pin pattern: show the fixed pin and the confirm bar. The guest
     // pans the map so the pin sits over their location, then confirms.
     if (mapContainerEl) mapContainerEl.classList.add('is-placing');
-    if (pinConfirmBar) pinConfirmBar.classList.add('active');
+    if (pinConfirmBar) {
+      pinConfirmBar.classList.add('active');
+      pinConfirmBar.classList.remove('is-compact');  // full instructions to start
+    }
+    // No pin until they click (or tap) the map, or pick a search result
+    removePreviewPin();
+    setPlacingText(false);
     if (pinPlacingHint) pinPlacingHint.classList.remove('active');
     if (pinSearchInput) pinSearchInput.value = '';
+    hideSuggestions();
+    var searchBox = document.getElementById('pin-search');
+    if (searchBox) searchBox.classList.remove('is-collapsed');
     if (pinSearchStatus) pinSearchStatus.textContent = '';
 
     // On phones, go full-screen so there's room to zoom in and place accurately
@@ -583,6 +629,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function exitPlacingMode() {
     isPlacingPin = false;
+    removePreviewPin();
     mapEl.classList.remove('pin-placing');
     if (mapContainerEl) mapContainerEl.classList.remove('is-placing');
     if (pinConfirmBar) pinConfirmBar.classList.remove('active');
@@ -597,13 +644,61 @@ document.addEventListener('DOMContentLoaded', function () {
     pendingPinName = '';
   }
 
-  // Confirm: save the pin at whatever point the map is currently centered on
+  /* ---------- Their pin, while placing ---------- */
+  // While placing, the mouse cursor is the pin (see .pin-placing in the CSS).
+  // Clicking (or tapping) the map drops their pin there; clicking again moves
+  // it, and it can also be dragged. Picking a search result drops it there too.
+  var touchDevice = window.matchMedia('(hover: none)').matches;
+
+  function placingPinIcon() {
+    return L.divIcon({
+      className: 'placing-pin',
+      html: '<svg viewBox="0 0 24 36" width="30" height="45" aria-hidden="true">' +
+        '<path d="M12 0 C5 0 0 5 0 12 C0 21 12 36 12 36 C12 36 24 21 24 12 C24 5 19 0 12 0 Z"/>' +
+        '<circle cx="12" cy="12" r="4"/></svg>',
+      iconSize: [30, 45],
+      iconAnchor: [15, 45]   // the pin's tip marks the spot
+    });
+  }
+
+  // The instructions in the bottom bar, before and after the pin is dropped
+  function setPlacingText(hasPin) {
+    var text = pinConfirmBar && pinConfirmBar.querySelector('.pin-confirm-text');
+    if (text) {
+      text.textContent = hasPin
+        ? (touchDevice ? 'Tap again or drag your pin to adjust it' : 'Click again or drag your pin to adjust it')
+        : (touchDevice ? 'Tap the map where you\u2019re traveling from' : 'Click the map where you\u2019re traveling from');
+    }
+    if (pinConfirmOkBtn) pinConfirmOkBtn.disabled = !hasPin;  // nothing to confirm yet
+  }
+
+  function dropPreviewPin(latlng) {
+    if (previewMarker) {
+      previewMarker.setLatLng(latlng);
+    } else {
+      previewMarker = L.marker(latlng, { icon: placingPinIcon(), draggable: true, keyboard: false }).addTo(map);
+    }
+    setPlacingText(true);
+  }
+
+  function removePreviewPin() {
+    if (previewMarker) {
+      map.removeLayer(previewMarker);
+      previewMarker = null;
+    }
+  }
+
+  map.on('click', function (e) {
+    if (isPlacingPin) dropPreviewPin(e.latlng);
+  });
+
+  // Confirm: save the pin where they dropped it
   if (pinConfirmOkBtn) {
     pinConfirmOkBtn.addEventListener('click', function () {
-      if (!isPlacingPin || !pendingPinName) return;
-      var center = map.getCenter();
-      var lat = center.lat;
-      var lng = center.lng;
+      if (!isPlacingPin || !pendingPinName || !previewMarker) return;
+      var spot = previewMarker.getLatLng();
+      var lat = spot.lat;
+      var lng = spot.lng;
       var name = pendingPinName;
 
       pinConfirmOkBtn.disabled = true;
@@ -634,53 +729,261 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Close (X) button — collapse the map / cancel placement
-  if (mapCloseBtn) {
-    mapCloseBtn.addEventListener('click', function () {
-      cancelPinPlacement();
-    });
+  // The X collapses the search bar into a small round search button (so it
+  // covers less of the map); tapping that button opens it back up. To stop
+  // placing a pin altogether, there's Cancel in the bar at the bottom.
+  var pinSearchEl = document.getElementById('pin-search');
+  var pinSearchOpenBtn = document.getElementById('pin-search-open');
+
+  function collapseSearch() {
+    hideSuggestions();
+    pinSearchEl.classList.add('is-collapsed');
+    pinSearchOpenBtn.focus();
   }
 
+  function expandSearch() {
+    pinSearchEl.classList.remove('is-collapsed');
+    // Focus the box once the opening animation is mostly done
+    setTimeout(function () { pinSearchInput.focus(); }, 250);
+  }
+
+  if (mapCloseBtn) mapCloseBtn.addEventListener('click', collapseSearch);
+  if (pinSearchOpenBtn) pinSearchOpenBtn.addEventListener('click', expandSearch);
+
   // Address search: type a city/address to jump the map (and the center pin)
-  // there, instead of panning by hand.
+  // there, instead of panning by hand. Uses Esri's address search (the same
+  // company as our map tiles), limited to the US since all our guests are
+  // coming from the US. Free to use, no account needed.
+  var GEOCODER = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer';
+
+  // Move the map to a place Esri found: zoomed to fit it (close in for a
+  // street address, wider for a whole city)
+  function goToCandidate(c) {
+    if (c.extent) {
+      map.fitBounds([[c.extent.ymin, c.extent.xmin], [c.extent.ymax, c.extent.xmax]], { maxZoom: 16 });
+    } else {
+      map.setView([c.location.y, c.location.x], 14);
+    }
+    // ...and drop their pin right on it (they can still move it)
+    if (isPlacingPin) dropPreviewPin([c.location.y, c.location.x]);
+  }
+
+  // Look up a place by its text (or by the key from a suggestion they picked)
+  function findPlace(text, magicKey) {
+    var url = GEOCODER + '/findAddressCandidates?f=json&maxLocations=1&countryCode=USA&SingleLine=' +
+      encodeURIComponent(text) + (magicKey ? '&magicKey=' + encodeURIComponent(magicKey) : '');
+    return fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (data) { return (data && data.candidates && data.candidates[0]) || null; });
+  }
+
   function runAddressSearch() {
     var q = (pinSearchInput.value || '').trim();
     if (!q) return;
-    pinSearchStatus.textContent = 'Searching…';
+    pinSearchStatus.textContent = 'Searching\u2026';
     pinSearchStatus.className = 'pin-search-status';
 
-    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-      encodeURIComponent(q);
-    fetch(url, { headers: { 'Accept-Language': 'en' } })
-      .then(function (r) { return r.json(); })
-      .then(function (results) {
-        if (results && results.length) {
-          var lat = parseFloat(results[0].lat);
-          var lng = parseFloat(results[0].lon);
-          map.setView([lat, lng], 12);
+    findPlace(q)
+      .then(function (c) {
+        if (c) {
+          goToCandidate(c);
           pinSearchStatus.textContent = '';
         } else {
-          pinSearchStatus.textContent = 'No match found — try a city or ZIP code.';
+          pinSearchStatus.textContent = 'No match found. Try a city or ZIP code.';
           pinSearchStatus.className = 'pin-search-status is-error';
         }
       })
       .catch(function () {
-        pinSearchStatus.textContent = 'Search failed — please try again.';
+        pinSearchStatus.textContent = 'Search failed. Please try again.';
         pinSearchStatus.className = 'pin-search-status is-error';
       });
   }
 
   if (pinSearchBtn) {
-    pinSearchBtn.addEventListener('click', runAddressSearch);
-  }
-  if (pinSearchInput) {
-    pinSearchInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        runAddressSearch();
-      }
+    pinSearchBtn.addEventListener('click', function () {
+      hideSuggestions();
+      runAddressSearch();
     });
   }
+
+  /* ---------- Search suggestions (like Google Maps) ---------- */
+  // As they type, a tray under the search bar suggests matching US places
+  // and addresses, from the same Esri address search as above.
+  var suggestionsEl = document.getElementById('pin-search-suggestions');
+  var suggestTimer = null;
+  var latestSuggestId = 0;   // ignore slow answers to older searches
+  var suggestions = [];      // the places currently shown in the tray
+  var highlighted = -1;      // which one the arrow keys are on
+
+  function hideSuggestions() {
+    if (!suggestionsEl) return;
+    suggestionsEl.hidden = true;
+    suggestionsEl.innerHTML = '';
+    suggestions = [];
+    highlighted = -1;
+    if (pinSearchInput) pinSearchInput.setAttribute('aria-expanded', 'false');
+  }
+
+  // Two lines per place: the address or place itself, then where it is.
+  // Esri gives one line like "571 McCarty Ave, Mountain View, CA, 94041, USA".
+  function describePlace(text) {
+    var parts = String(text).replace(/, USA$/, '').split(', ');
+    return { main: parts[0], where: parts.slice(1).join(', ') };
+  }
+
+  function escapeText(t) {
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function showSuggestions(items) {
+    suggestions = [];
+    var html = '';
+    items.forEach(function (item) {
+      var label = describePlace(item.text || '');
+      if (!label.main) return;
+      suggestions.push({ label: label, text: item.text, magicKey: item.magicKey });
+      html += '<li class="pin-suggestion" role="option" data-index="' + (suggestions.length - 1) + '">' +
+        '<span class="pin-suggestion-main">' + escapeText(label.main) + '</span>' +
+        (label.where ? '<span class="pin-suggestion-where">' + escapeText(label.where) + '</span>' : '') +
+      '</li>';
+    });
+    if (!suggestions.length) {
+      hideSuggestions();
+      return;
+    }
+    suggestionsEl.innerHTML = html;
+    suggestionsEl.hidden = false;
+    highlighted = -1;
+    pinSearchInput.setAttribute('aria-expanded', 'true');
+  }
+
+  // While suggestions load, show the same line-art flower as the RSVP form's
+  // loader (styled by .floral-loader in styles.css), so the tray opens right
+  // away instead of after a pause
+  function showSuggestionsLoading() {
+    suggestions = [];
+    highlighted = -1;
+    suggestionsEl.innerHTML =
+      '<li class="pin-suggestions-loading" role="status" aria-live="polite">' +
+        '<div class="floral-loader">' +
+          '<svg viewBox="0 0 100 108" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            '<g transform="translate(50,40)">' +
+              '<path pathLength="1" d="M0,16 C0,34 0,50 0,64"/>' +
+              '<path pathLength="1" d="M0,44 C10,37 18,43 16,52 C9,54 2,50 0,46"/>' +
+              '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(0)"/>' +
+              '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(72)"/>' +
+              '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(144)"/>' +
+              '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(216)"/>' +
+              '<ellipse pathLength="1" cx="0" cy="-15" rx="6.5" ry="15" transform="rotate(288)"/>' +
+              '<circle pathLength="1" cx="0" cy="0" r="4.5"/>' +
+            '</g>' +
+          '</svg>' +
+          '<p class="search-loading">Finding places&hellip;</p>' +
+        '</div>' +
+      '</li>';
+    suggestionsEl.hidden = false;
+    pinSearchInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function fetchSuggestions(q) {
+    var id = ++latestSuggestId;
+    showSuggestionsLoading();
+    // US only, favoring places near wherever the map is currently looking
+    var c = map.getCenter();
+    fetch(GEOCODER + '/suggest?f=json&countryCode=USA&maxSuggestions=5&location=' +
+      c.lng.toFixed(3) + ',' + c.lat.toFixed(3) + '&text=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (id !== latestSuggestId) return;  // a newer search has taken over
+        showSuggestions((data && data.suggestions) || []);
+      })
+      .catch(function () {
+        // Suggestions are a bonus: if they fail, the Search button still works
+        if (id === latestSuggestId) hideSuggestions();
+      });
+  }
+
+  // Jump the map to a suggestion they picked
+  function chooseSuggestion(i) {
+    var s = suggestions[i];
+    if (!s) return;
+    pinSearchInput.value = s.label.main + (s.label.where ? ', ' + s.label.where : '');
+    hideSuggestions();
+    pinSearchStatus.textContent = '';
+    findPlace(s.text, s.magicKey)
+      .then(function (c) { if (c) goToCandidate(c); })
+      .catch(function () {
+        pinSearchStatus.textContent = 'Search failed. Please try again.';
+        pinSearchStatus.className = 'pin-search-status is-error';
+      });
+  }
+
+  function highlight(i) {
+    var items = suggestionsEl.querySelectorAll('.pin-suggestion');
+    if (!items.length) return;
+    highlighted = (i + items.length) % items.length;  // wrap around
+    for (var k = 0; k < items.length; k++) {
+      items[k].classList.toggle('is-highlighted', k === highlighted);
+    }
+  }
+
+  if (suggestionsEl) {
+    // mousedown (not click) so it fires before the search box loses focus
+    suggestionsEl.addEventListener('mousedown', function (e) {
+      var item = e.target.closest('.pin-suggestion');
+      if (!item) return;
+      e.preventDefault();
+      chooseSuggestion(parseInt(item.getAttribute('data-index'), 10));
+    });
+  }
+
+  if (pinSearchInput) {
+    pinSearchInput.addEventListener('input', function () {
+      clearTimeout(suggestTimer);
+      var q = pinSearchInput.value.trim();
+      if (q.length < 3) {
+        latestSuggestId++;
+        hideSuggestions();
+        return;
+      }
+      // Wait until they pause typing for a moment before looking it up
+      suggestTimer = setTimeout(function () { fetchSuggestions(q); }, 300);
+    });
+
+    pinSearchInput.addEventListener('keydown', function (e) {
+      var open = suggestionsEl && !suggestionsEl.hidden;
+      if (e.key === 'ArrowDown' && open) {
+        e.preventDefault();
+        highlight(highlighted + 1);
+      } else if (e.key === 'ArrowUp' && open) {
+        e.preventDefault();
+        highlight(highlighted - 1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (open && highlighted >= 0) {
+          chooseSuggestion(highlighted);
+        } else {
+          hideSuggestions();
+          runAddressSearch();
+        }
+      } else if (e.key === 'Escape' && open) {
+        e.stopPropagation();  // close the tray, not the whole pin flow
+        hideSuggestions();
+      }
+    });
+
+    // Close the tray when they click away (after a moment, so a tap on a
+    // suggestion still counts)
+    pinSearchInput.addEventListener('blur', function () {
+      setTimeout(hideSuggestions, 150);
+    });
+  }
+
+  // The instructions bubble covers part of the map: once they start dragging
+  // the map, shrink it to just the Cancel / Confirm pin buttons
+  map.on('dragstart', function () {
+    if (isPlacingPin && pinConfirmBar) pinConfirmBar.classList.add('is-compact');
+  });
 
   // Allow pressing Escape to cancel placing mode
   document.addEventListener('keydown', function (e) {
@@ -760,11 +1063,20 @@ document.addEventListener('DOMContentLoaded', function () {
     if (mapContainer) {
       mapContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    // Open the form after a short delay to let the page settle
-    setTimeout(function() {
-      addPinBtn.style.display = 'none';
-      pinForm.classList.add('active');
-      pinNameInput.focus();
-    }, 500);
+    // Open the banner after a short delay to let the page settle
+    setTimeout(showPinForm, 500);
+  }
+
+  // "See where everyone is traveling from" (on the RSVP confirmation) links
+  // here with ?guests=true: show the "Our guests" pins and scroll to the map
+  var showGuestsFromLink = urlParams.get('guests') === 'true';
+  if (showGuestsFromLink) {
+    activeCategories.guest = true;
+    activeCategories.hotel = false;
+    activeCategories.airport = false;
+    activeCategories.event = false;
+    updateMap();
+    var guestMap = document.querySelector('.map-container');
+    if (guestMap) guestMap.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 });

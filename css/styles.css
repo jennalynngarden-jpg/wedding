@@ -286,8 +286,11 @@ p {
   transition: all 0.3s ease;
 }
 
+/* Open (X): the top and bottom lines slide straight to the middle line's
+   spot (7px = 2px line + 5px gap), then rotate, so both arms cross at the
+   exact center and come out the same length */
 .nav-toggle.active span:nth-child(1) {
-  transform: rotate(45deg) translate(4.5px, 4.5px);
+  transform: translateY(7px) rotate(45deg);
 }
 
 .nav-toggle.active span:nth-child(2) {
@@ -295,7 +298,7 @@ p {
 }
 
 .nav-toggle.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(4.5px, -4.5px);
+  transform: translateY(-7px) rotate(-45deg);
 }
 
 /* ---------- 8. Hero ---------- */
@@ -810,6 +813,18 @@ p {
   position: relative;
 }
 
+/* Layering, so the site's menu (layer 100) always sits on top:
+   - The map itself (its tiles, pins and zoom buttons, which the map library
+     gives very high layer numbers) is kept inside its own layer here.
+   - Our extras on top of the map (search bar, instructions bar, hint, toast)
+     use small numbers (4-6): above the map, but below the menu.
+   - On phones, the "add your pin" panel, its dimmed backdrop and the full
+     screen map deliberately go above everything (1500-2000). */
+#travel-map {
+  isolation: isolate;
+  z-index: 0;
+}
+
 /* Pin overlay positioned on top-right of map */
 .pin-overlay {
   position: absolute;
@@ -948,8 +963,10 @@ p {
 }
 
 /* Custom cursor when placing a pin */
+/* While placing, the mouse cursor is the pin (same dark green as the site),
+   with its tip marking the spot. The pin they drop is .placing-pin below. */
 .leaflet-container.pin-placing {
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='36' viewBox='0 0 24 36'%3E%3Cpath d='M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z' fill='%23d4a5a5' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='4' fill='%23fff'/%3E%3C/svg%3E") 12 36, crosshair;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='36' viewBox='0 0 24 36'%3E%3Cpath d='M12 1C6 1 1 6 1 12c0 8.5 11 23 11 23s11-14.5 11-23C23 6 18 1 12 1z' fill='%232c3e2d' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='4' fill='%23fff'/%3E%3C/svg%3E") 12 35, crosshair;
 }
 
 /* Toast notification */
@@ -969,7 +986,7 @@ p {
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
-  z-index: 1000;
+  z-index: 6;
 }
 
 .pin-toast.active {
@@ -1090,7 +1107,7 @@ p {
   font-family: var(--font-sans);
   font-size: 0.85rem;
   max-width: calc(100% - 24px);
-  z-index: 1001;
+  z-index: 4;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
@@ -1145,7 +1162,7 @@ p {
   font-family: var(--font-sans);
   font-size: 0.85rem;
   max-width: calc(100% - 24px);
-  z-index: 1001;
+  z-index: 4;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
@@ -1167,6 +1184,31 @@ p {
   color: rgba(255, 255, 255, 0.75);
   text-align: center;
   max-width: 260px;
+}
+
+/* The instructions fade away once they start dragging the map, leaving a
+   small bar with just Cancel / Confirm pin so more of the map is visible */
+.pin-confirm-bar {
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease,
+    gap 0.3s ease, padding 0.3s ease;
+}
+
+.pin-confirm-text,
+.pin-confirm-subtext {
+  max-height: 4.5em;
+  overflow: hidden;
+  transition: opacity 0.3s ease, max-height 0.3s ease;
+}
+
+.pin-confirm-bar.is-compact {
+  gap: 0;
+  padding: 0.5rem 0.6rem;
+}
+
+.pin-confirm-bar.is-compact .pin-confirm-text,
+.pin-confirm-bar.is-compact .pin-confirm-subtext {
+  opacity: 0;
+  max-height: 0;
 }
 
 .pin-confirm-actions {
@@ -1214,6 +1256,11 @@ p {
 }
 
 /* Full-screen map (used on phones while placing a pin) */
+/* In full-screen (phones), move the zoom buttons below the search bar */
+.map-container.map-fullscreen .leaflet-top {
+  top: 58px;
+}
+
 .map-container.map-fullscreen {
   position: fixed;
   inset: 0;
@@ -1235,43 +1282,36 @@ body.map-fullscreen-open {
 
 /* Fixed center pin (center-pin placement pattern). Its tip sits on the map
    center; the guest pans the map underneath it, then confirms. */
-.map-center-pin {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -100%);  /* pin tip rests on the map center */
-  pointer-events: none;               /* let drags pass through to the map */
-  z-index: 1000;
-  display: none;
+/* Their pin while placing: dropped where they click or tap (and draggable).
+   It plays a little drop animation each time it lands. */
+.placing-pin {
+  background: none;
+  border: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
 }
 
-.map-container.is-placing .map-center-pin {
+.placing-pin svg {
   display: block;
-  animation: center-pin-drop 0.3s ease;
+  animation: placing-pin-drop 0.25s ease;
 }
 
-.map-center-pin svg {
-  display: block;
-}
-
-.map-center-pin path {
+.placing-pin path {
   fill: var(--color-heading);
   stroke: #fff;
   stroke-width: 2;
 }
 
-.map-center-pin circle {
+.placing-pin circle {
   fill: #fff;
 }
 
-@keyframes center-pin-drop {
-  0%   { transform: translate(-50%, -140%); }
-  100% { transform: translate(-50%, -100%); }
+@keyframes placing-pin-drop {
+  0%   { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .map-container.is-placing .map-center-pin {
+  .placing-pin svg {
     animation: none;
   }
 }
@@ -1282,12 +1322,91 @@ body.map-fullscreen-open {
   top: 10px;
   left: 10px;
   right: 10px;
-  z-index: 1002;
+  z-index: 5;
   display: none;
 }
 
 .map-container.is-placing .pin-search {
   display: block;
+}
+
+/* Only the visible bar, tray and message respond to taps, so the map can
+   still be dragged in the empty space around a collapsed search button */
+.pin-search {
+  pointer-events: none;
+}
+
+.pin-search > * {
+  pointer-events: auto;
+}
+
+/* On wider screens, the search bar takes about half the map's width and sits
+   on the right (clear of the zoom buttons on the left). On phones, where the
+   map goes full screen, it spans the width. */
+@media (min-width: 701px) {
+  .pin-search {
+    left: auto;
+    width: 50%;
+    min-width: 340px;
+  }
+}
+
+/* Suggestions tray under the search bar, filled in as they type */
+.pin-search-suggestions {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0.3rem 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.pin-search-suggestions[hidden] {
+  display: none;
+}
+
+/* Loading state in the tray: a smaller version of the RSVP form's flower */
+.pin-suggestions-loading {
+  list-style: none;
+}
+
+.pin-suggestions-loading .floral-loader {
+  padding: 0.75rem 0 0.6rem;
+}
+
+.pin-suggestions-loading .floral-loader svg {
+  width: 44px;
+}
+
+.pin-suggestion {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.pin-suggestion + .pin-suggestion {
+  border-top: 1px solid var(--color-border);
+}
+
+.pin-suggestion:hover,
+.pin-suggestion.is-highlighted {
+  background: var(--color-sage-light);
+}
+
+.pin-suggestion-main {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.pin-suggestion-where {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--color-text-light);
 }
 
 .pin-search-row {
@@ -1298,6 +1417,44 @@ body.map-fullscreen-open {
   border-radius: 999px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   padding: 0.35rem 0.4rem 0.35rem 0.35rem;
+  /* Collapsing: the bar slides closed toward the right into a round button */
+  margin-left: auto;
+  max-width: 100%;
+  overflow: hidden;
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pin-search-row > .pin-search-input,
+.pin-search-row > .pin-search-btn {
+  transition: opacity 0.2s ease;
+}
+
+/* The round search button only shows while collapsed (two class names so
+   this wins over the shared round-button style further down) */
+.pin-search-row .pin-search-open-btn {
+  display: none;
+}
+
+.pin-search.is-collapsed .pin-search-row {
+  max-width: 46px;   /* just wide enough for the round button */
+}
+
+.pin-search.is-collapsed .map-close-btn:not(.pin-search-open-btn) {
+  display: none;
+}
+
+.pin-search.is-collapsed .pin-search-open-btn {
+  display: flex;
+}
+
+.pin-search.is-collapsed .pin-search-input,
+.pin-search.is-collapsed .pin-search-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pin-search.is-collapsed .pin-search-status {
+  display: none;
 }
 
 .map-close-btn {
@@ -1308,13 +1465,16 @@ body.map-fullscreen-open {
   border: none;
   background: var(--color-sage-light);
   color: var(--color-heading);
-  font-size: 1.3rem;
-  line-height: 1;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background 0.2s ease;
+}
+
+.map-close-btn svg {
+  display: block;
 }
 
 .map-close-btn:hover {
@@ -3406,12 +3566,16 @@ body.map-fullscreen-open {
   height: 10px;
   border-radius: 50%;
   background: var(--color-border);
-  transition: background 0.3s ease, transform 0.3s ease;
+  transition: background 0.3s ease, width 0.3s ease, height 0.3s ease;
 }
 
+/* The current step's dot is a bit bigger. (Made bigger by size, not by
+   zooming it with "transform": Safari draws zoomed things on a separate layer
+   and could leave a stray green speck behind when the dots are hidden.) */
 .progress-dot.active {
   background: var(--color-sage);
-  transform: scale(1.3);
+  width: 13px;
+  height: 13px;
 }
 
 .progress-dot.completed {
@@ -3428,6 +3592,33 @@ body.map-fullscreen-open {
 /* Anchor the floating results tray to the search field */
 #step-1 .form-group {
   position: relative;
+}
+
+/* The "Find your invitation" search box gets more emphasis than the other
+   fields: a full outlined box, slightly larger text, and a magnifying-glass
+   icon so it clearly reads as "type here to search". */
+#guest-search {
+  font-size: 1rem;           /* 16px also stops iPhones from zooming in on tap */
+  font-weight: 400;
+  padding: 0.85rem 1rem 0.85rem 2.75rem;  /* extra left room for the icon */
+  border: 1px solid #cfc9c1;
+  border-radius: 10px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a9a6d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3ccircle cx='11' cy='11' r='7'/%3e%3cline x1='21' y1='21' x2='16.65' y2='16.65'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 1rem center;
+  background-size: 18px 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#guest-search::placeholder {
+  color: #9a9a9a;
+}
+
+/* Soft sage glow when the box is active */
+#guest-search:focus {
+  border-color: var(--color-sage);
+  box-shadow: 0 0 0 3px var(--color-sage-light);
 }
 
 /* Search results appear in a floating dropdown tray overlaid on the page —
@@ -3467,9 +3658,11 @@ body.map-fullscreen-open {
   border: none;
   border-bottom: 1px solid var(--color-border);
   background: none;
-  font-family: var(--font-serif);
-  font-size: 1.05rem;
-  color: var(--color-heading);
+  /* Body font at regular size, so names read as list options, not headings */
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--color-text);
   cursor: pointer;
   text-align: left;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -3494,9 +3687,373 @@ body.map-fullscreen-open {
   text-align: center;
 }
 
-/* Standalone messages (no matches / connection error) get their own padding */
+/* Standalone messages (no matches / connection error) get their own padding.
+   Upright (not italic) so they read as a clear, friendly message. */
 .no-results {
   padding: 1rem;
+  font-style: normal;
+}
+
+.no-results a {
+  color: var(--color-sage-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Loading screen between the search and the party steps: give the flower
+   room so it sits comfortably in the middle of the form area */
+#step-loading .floral-loader {
+  padding: 3rem 0 2rem;
+}
+
+/* Centered button pairs, used only on screens that are just a heading and a
+   line of text with no form field (like "Add your pin", or Maybe later + Sure
+   on the confirmation screen). Steps with a form field keep their buttons at
+   opposite ends of the row.
+   (Two class names so these win over the regular rules further down) */
+.step-nav.step-nav--center {
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.step-nav.step-nav--center .step-btn--next,
+.step-nav.step-nav--center .step-btn--submit {
+  margin-left: 0;
+}
+
+/* Full-page loader while an RSVP is being sent: a flower with vines growing
+   out of it, drawing itself line by line (see vineLoaderSVG in rsvp.js) */
+.page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.97);
+  padding: 1.5rem;
+}
+
+.page-loader.active {
+  display: flex;
+  animation: page-loader-in 0.3s ease both;
+}
+
+@keyframes page-loader-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.page-loader-inner {
+  text-align: center;
+}
+
+.page-loader-art {
+  width: min(340px, 80vw);
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.page-loader-art .pl {
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: vine-draw 5s ease-in-out infinite;
+}
+
+@keyframes vine-draw {
+  0%   { stroke-dashoffset: 1; }   /* hidden */
+  35%  { stroke-dashoffset: 0; }   /* drawn */
+  80%  { stroke-dashoffset: 0; }   /* hold */
+  100% { stroke-dashoffset: 1; }   /* erase, then loop re-draws */
+}
+
+.page-loader-caption {
+  margin: 1.25rem auto 0;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--color-heading);
+  max-width: none;
+}
+
+/* For people who prefer less motion: show the drawing without animating */
+@media (prefers-reduced-motion: reduce) {
+  .page-loader-art .pl {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Confirmation and "We'll miss you" screens: line drawings (dinner table,
+   couple dancing, or flower and vines) that draw themselves once, line by
+   line, when the screen appears */
+.confirm-art {
+  display: block;
+  height: auto;
+  margin: 0 auto 1.25rem;
+}
+
+.confirm-art--dinner { width: 290px; }
+.confirm-art--dance  { width: 200px; }
+.confirm-art--vine   { width: 220px; }
+
+/* A little smaller on phones */
+@media (max-width: 600px) {
+  .confirm-art--dinner { width: 210px; }
+  .confirm-art--dance  { width: 170px; }
+  .confirm-art--vine   { width: 190px; }
+}
+
+.confirm-art .pl {
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: confirm-draw 0.9s ease forwards;
+}
+
+@keyframes confirm-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Gold details: music notes, glasses, forks, flowers */
+.confirm-art .note {
+  stroke: var(--color-gold);
+}
+
+/* Shapes filled with the page color, so lines behind them (like the guests
+   behind the table) are hidden with a clean edge */
+.confirm-art .bg {
+  fill: var(--color-bg);
+}
+
+/* Small solid details (his jacket button) fade in on cue */
+.confirm-art .dot {
+  fill: var(--color-sage);
+  opacity: 0;
+  animation: confirm-fade 0.4s ease forwards;
+}
+
+@keyframes confirm-fade {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-art .pl,
+  .confirm-art .dot {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* Confirmation screen: hidden pieces stay hidden (the button row's
+   display: flex would otherwise show it) */
+#step-confirmation [hidden] {
+  display: none;
+}
+
+/* "Maybe later": the heading and invite fade out... */
+#confirm-heading,
+#extras-invite {
+  transition: opacity 0.25s ease;
+}
+
+#confirm-heading.is-leaving,
+#extras-invite.is-leaving {
+  opacity: 0;
+}
+
+/* ...then the emailed-link note and "Get travel tips" fade in */
+.confirm-later {
+  animation: confirm-later-in 0.5s ease both;
+}
+
+.confirm-later-cta {
+  margin: 1.5rem 0 0;
+  animation-delay: 0.15s;
+}
+
+@keyframes confirm-later-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirm-later { animation: none; }
+}
+
+.confirm-later-cta a.step-btn,
+a.decline-home {
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* Back buttons normally have no left padding (they sit at the row's left
+   edge); centered on its own, it needs both sides to look centered */
+a.decline-home {
+  padding-left: 2rem;
+}
+
+/* "We'll miss you": the update-your-RSVP note is smaller and lighter */
+.decline-small {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+}
+
+/* "Who's coming" card: link to the guest map, under the subheader */
+#attendee-section > .step-description {
+  margin-bottom: 0.6rem;
+}
+
+.attendee-map-link {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 1.75rem;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-sage);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.attendee-map-link:hover {
+  color: var(--color-sage-hover);
+}
+
+/* Confirmation screen: the invitation into the optional part 2 questions
+   (plain text and buttons, no box) */
+.extras-invite {
+  margin: 0 0 2.5rem;
+}
+
+.extras-invite .step-nav {
+  margin-top: 1.25rem;
+  gap: 0.5rem;
+}
+
+.extras-invite .step-btn--back {
+  padding-left: 2rem;
+}
+
+/* Less space between "We got your RSVP..." and the optional-questions line */
+#step-confirmation > .step-description {
+  margin-bottom: 0.75rem;
+}
+
+/* "Add your pin" on the last optional step is a link styled as a button */
+a.pin-step-link {
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Dinner step: the dietary field's label is a small field label (body font),
+   so it doesn't compete with the guest's name heading above it */
+.form-group label.dietary-label {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+  letter-spacing: 0;
+  margin-bottom: 0.2rem;
+}
+
+/* "Who's your +1?" step: first and last name side by side
+   (stacked on phones, see the small-screen section) */
+.name-row {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.name-row .form-group {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Only shown when someone has more than one +1 */
+.plusone-label {
+  font-family: var(--font-serif);
+  color: var(--color-heading);
+  margin: 0.5rem 0 0.75rem;
+  max-width: none;
+}
+
+/* Inline message on a step (like "please include Blue Ivy"), shown right
+   under the thing that needs fixing instead of in a pop-up */
+.step-error {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #fbf4ec;
+  border: 1px solid #ecd9c3;
+  color: #7a4f24;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  text-align: left;
+  max-width: none;
+  animation: fadeInStep 0.25s ease;
+}
+
+.step-error[hidden] {
+  display: none;
+}
+
+/* "Who's RSVPing today?" checklist: one row per person, matching the
+   party rows on the next step (serif names, thin dividers) */
+.who-list {
+  border-top: 1px solid var(--color-border);
+}
+
+.who-option {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.who-option input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--color-sage);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.who-name {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--color-heading);
+  flex: 1;
+}
+
+/* People who already RSVPed: shown faded, and can't be picked again */
+.who-option--done {
+  cursor: default;
+}
+
+.who-option--done .who-name {
+  color: var(--color-text-light);
+}
+
+.who-note {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  color: var(--color-text-light);
 }
 
 /* The loader caption sits inside the flower loader, so keep it tight */
@@ -3759,7 +4316,8 @@ body.map-fullscreen-open {
 
 .attendee-group-heading {
   font-family: var(--font-serif);
-  font-size: 1.15rem;
+  font-size: 1rem;
+  text-align: center;  /* centered over each column of names */
   font-weight: 400;
   color: var(--color-heading);
   margin-bottom: 0.75rem;
@@ -3769,6 +4327,35 @@ body.map-fullscreen-open {
 
 .attendee-party {
   margin-bottom: 0.75rem;
+}
+
+/* Reveal animation when the list appears: the card fades and rises into
+   place, then each party's names fade in one after another (each party gets
+   its own delay from rsvp.js) */
+.attendee-section--reveal {
+  animation: attendee-card-in 0.6s ease both;
+}
+
+.attendee-section--reveal .attendee-party {
+  animation: attendee-names-in 0.5s ease both;
+}
+
+@keyframes attendee-card-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes attendee-names-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* For people who prefer less motion: just show the list */
+@media (prefers-reduced-motion: reduce) {
+  .attendee-section--reveal,
+  .attendee-section--reveal .attendee-party {
+    animation: none;
+  }
 }
 
 .attendee-name {
@@ -4124,10 +4711,6 @@ body.map-fullscreen-open {
 
   /* On mobile, stack each dropdown full-width under the guest's name so it's
      big and easy to tap (side-by-side made them cramped and tiny). */
-  #party-members .party-member-row:first-child {
-    display: none;  /* hide the "Attendance" column header — not needed stacked */
-  }
-
   .party-member-row {
     flex-direction: column;
     align-items: stretch;
@@ -4250,16 +4833,16 @@ body.map-fullscreen-open {
     justify-content: flex-start !important;
     flex-wrap: nowrap !important;
     position: fixed;
-    top: var(--nav-height);        /* sit just under the header */
-    left: 0;
-    right: 0;
-    max-height: calc(100vh - var(--nav-height));
+    /* A floating card just below the header (which stays full width), with
+       the same space on the left and right so it never looks lopsided */
+    top: calc(var(--nav-height) + 0.5rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    max-height: calc(100vh - var(--nav-height) - 1.25rem);
     overflow-y: auto;
     background: #ffffff !important;
-    border-bottom: 1px solid var(--color-border);
-    /* Softly rounded bottom corners — a nicer mobile-sheet look */
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
     padding: 0.25rem 0 0.75rem;
     gap: 0;
@@ -4448,6 +5031,26 @@ body.map-fullscreen-open {
 
   .site-header {
     padding: 1.25rem 1rem 1rem;
+  }
+
+  /* RSVP page on phones: pull the "RSVP" title closer to the nav and
+     tighten the gaps below it, so the form starts higher on the screen */
+  .rsvp-section {
+    padding-top: 1.75rem;
+  }
+
+  .rsvp-section .section-divider {
+    margin-bottom: 1.5rem;
+  }
+
+  .rsvp-section .rsvp-progress {
+    margin-bottom: 1.75rem;
+  }
+
+  /* +1 name fields stack on phones */
+  .name-row {
+    flex-direction: column;
+    gap: 0;
   }
 
   .activities-grid {

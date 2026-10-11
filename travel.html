@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="css/styles.css?v=84">
+  <link rel="stylesheet" href="css/styles.css?v=109">
 </head>
 <body>
 
@@ -52,21 +52,24 @@
       <div class="map-container">
         <div id="travel-map"></div>
 
-        <!-- Fixed center pin shown while placing (guest pans the map under it) -->
-        <div id="map-center-pin" class="map-center-pin" aria-hidden="true">
-          <svg viewBox="0 0 24 36" width="30" height="45">
-            <path d="M12 0 C5 0 0 5 0 12 C0 21 12 36 12 36 C12 36 24 21 24 12 C24 5 19 0 12 0 Z"/>
-            <circle cx="12" cy="12" r="4"/>
-          </svg>
-        </div>
 
         <!-- Address search + close, shown while placing a pin -->
         <div id="pin-search" class="pin-search">
           <div class="pin-search-row">
-            <button type="button" id="map-close" class="map-close-btn" aria-label="Close map">&times;</button>
-            <input type="text" id="pin-search-input" placeholder="Search a city or address&hellip;" autocomplete="off">
+            <!-- X: collapses the search bar into the round search button below.
+                 Icons are drawn (not text characters) so they sit exactly centered. -->
+            <button type="button" id="map-close" class="map-close-btn" aria-label="Hide search">
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+            </button>
+            <!-- Shown only while collapsed: opens the search bar back up -->
+            <button type="button" id="pin-search-open" class="map-close-btn pin-search-open-btn" aria-label="Search for a place">
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M15 15 L20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <input type="text" id="pin-search-input" class="pin-search-input" placeholder="Search a city or address&hellip;" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="pin-search-suggestions" aria-expanded="false">
             <button type="button" id="pin-search-btn" class="pin-search-btn">Search</button>
           </div>
+          <!-- Suggestions tray, filled in as they type (see travel-map.js) -->
+          <ul id="pin-search-suggestions" class="pin-search-suggestions" role="listbox" hidden></ul>
           <p id="pin-search-status" class="pin-search-status"></p>
         </div>
 
@@ -92,7 +95,7 @@
 
         <!-- Confirm bar shown while placing (center-pin pattern) -->
         <div id="pin-confirm-bar" class="pin-confirm-bar">
-          <span class="pin-confirm-text">Move the map to position your pin</span>
+          <span class="pin-confirm-text">Click the map where you&rsquo;re traveling from</span>
           <span class="pin-confirm-subtext">Only your pin&rsquo;s spot on the map is saved, not your exact address.</span>
           <div class="pin-confirm-actions">
             <button id="pin-confirm-cancel" class="pin-confirm-cancel-btn">Cancel</button>
@@ -231,6 +234,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/main.js?v=4"></script>
-  <script src="js/travel-map.js?v=9"></script>
+  <script src="js/travel-map.js?v=17"></script>
 </body>
 </html>
