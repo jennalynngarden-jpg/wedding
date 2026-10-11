@@ -450,11 +450,7 @@ function buildGuestEmail(e) {
       '<strong style="color:#2c3e2d;font-size:16px;">' + escapeHtml(r[0]) + '</strong><br>' +
       '<span style="color:#6b6b6b;font-size:16px;">' + escapeHtml(r[1]) + '</span></td></tr>';
   }).join('');
-  var button = e.buttonText
-    ? '<p style="text-align:center;margin:24px 0;">' +
-        '<a href="' + e.link + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">' +
-        escapeHtml(e.buttonText) + '</a></p>'
-    : '';
+  var button = e.buttonText ? emailButton(e.buttonText, e.link, '24px auto') : '';
   var html =
     '<div style="background:#ffffff;padding:24px 16px;font-family:Helvetica,Arial,sans-serif;color:#3a3a3a;font-size:15px;line-height:1.6;">' +
       '<div style="max-width:520px;margin:0 auto;">' +
@@ -585,15 +581,22 @@ function buildCoupleEmail(e) {
   var c = e.counts;
   function tag(n) {
     if (!n) return '';
-    return ' <span style="display:inline-block;background:#ffffff;color:#5c7a4e;font-size:12px;font-weight:bold;padding:2px 7px;border-radius:10px;vertical-align:middle;">' +
+    return ' <span style="display:inline-block;background:#ffffff;color:#5c7a4e;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:16px;font-weight:bold;padding:2px 7px;border-radius:10px;vertical-align:middle;">' +
       (n > 0 ? '+' + n : '−' + Math.abs(n)) + '</span>';
   }
+  // Each box is a fixed-height table cell with its contents centered
+  // top-to-bottom (the dependable way to center things in email apps). The
+  // numbers use same-height digits: Georgia's default digits dip below the
+  // line, which made the numbers look like they sat low.
   function box(num, label, bg, border, change) {
     return '<td width="33%" style="padding:0 5px;">' +
-      '<div style="background:' + bg + ';' + (border ? 'border:1px solid #e8e4df;' : '') + 'border-radius:8px;padding:14px 6px 12px;text-align:center;">' +
-        '<div style="font-family:Georgia,serif;font-size:30px;line-height:1.2;color:#2c3e2d;">' + num + tag(change) + '</div>' +
-        '<div style="font-size:11px;letter-spacing:1.5px;color:#6b6b6b;font-weight:bold;">' + label + '</div>' +
-      '</div></td>';
+      '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;"><tr>' +
+        '<td align="center" valign="middle" height="80" style="height:80px;background:' + bg + ';' +
+          (border ? 'border:1px solid #e8e4df;' : '') + 'border-radius:8px;padding:0 6px;text-align:center;vertical-align:middle;">' +
+          '<div style="font-family:Georgia,serif;font-size:30px;line-height:34px;color:#2c3e2d;font-variant-numeric:lining-nums;font-feature-settings:\'lnum\' 1;">' +
+            num + tag(change) + '</div>' +
+          '<div style="font-size:11px;line-height:14px;margin-top:4px;letter-spacing:1.5px;color:#6b6b6b;font-weight:bold;">' + label + '</div>' +
+        '</td></tr></table></td>';
   }
   var countsHtml = c
     ? '<table style="width:100%;border-collapse:collapse;margin:4px -5px 18px;"><tr>' +
@@ -616,8 +619,7 @@ function buildCoupleEmail(e) {
         '<p>' + escapeHtml(e.intro) + '</p>' +
         (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
         (e.closing ? '<p>' + escapeHtml(e.closing) + '</p>' : '') +
-        '<p style="text-align:center;margin:24px 0 8px;">' +
-          '<a href="' + responsesTabUrl() + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">Open RSVP sheet</a></p>' +
+        emailButton('Open RSVP sheet', responsesTabUrl(), '24px auto 8px') +
       '</div>' +
     '</div>';
   var text = e.heading + '\n\n' +
@@ -682,6 +684,19 @@ function notifyNewRsvp(data) {
     intro: name + ' just RSVPed' + (guests.length > 1 ? ' for their party' : '') + '.',
     rows: rows
   }));
+}
+
+// A "bulletproof" email button: the color is on a small table cell, and the
+// link fills the whole cell. That way a tap anywhere on the button opens the
+// link in every email app (some, like iPhone Mail, can ignore taps on a link
+// that's only styled to look like a button).
+function emailButton(text, link, margin) {
+  return '<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:' + margin + ';border-collapse:separate;">' +
+    '<tr><td align="center" bgcolor="#2c3e2d" style="background:#2c3e2d;border-radius:6px;">' +
+      '<a href="' + link + '" target="_blank" style="display:block;padding:12px 24px;font-family:Helvetica,Arial,sans-serif;' +
+        'font-size:13px;line-height:18px;letter-spacing:1px;text-transform:uppercase;color:#ffffff;text-decoration:none;border-radius:6px;">' +
+        escapeHtml(text) + '</a>' +
+    '</td></tr></table>';
 }
 
 function sendComposedEmail(to, email) {

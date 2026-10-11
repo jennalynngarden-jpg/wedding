@@ -1102,8 +1102,13 @@
     showPageLoader('Saving your changes&hellip;');
     // Saving the same changes twice is harmless, so backup copies are fine
     fetchJSON(APPS_SCRIPT_URL, 30000, 8000, JSON.stringify(payload))
-      .then(function () { return loadSummaryData(state.rsvpCode); })
       .then(function () {
+        // Saved. The page already knows what changed, so it updates the cards
+        // right away instead of waiting to reload the whole RSVP from Google
+        // (that took several more seconds). A fresh copy loads quietly in
+        // the background, so the next edit starts from the sheet's version.
+        applySavedChanges(payload);
+        loadSummaryData(state.rsvpCode).catch(function () {});
         hidePageLoader();
         if (everyoneOut) {
           // Everyone switched to "can't make it": the "We'll miss you" screen
@@ -1120,6 +1125,25 @@
         hidePageLoader();
         showModal('We couldn’t save your changes', 'Please check your connection and try again. (If they already went through, they won’t be saved twice.)');
       });
+  }
+
+  // Update the summary with changes that were just saved (the same changes
+  // the script makes to the sheet; see updateRsvp in Code.gs)
+  function applySavedChanges(payload) {
+    var d = state.summary;
+    (payload.guests || []).forEach(function (g) {
+      var m = d.members.filter(function (x) { return x.guestId === g.guestId && x.inCode; })[0];
+      if (!m) return;
+      if (g.guestName) m.displayName = g.guestName;
+      if (g.attending !== undefined) {
+        m.attending = g.attending;
+        if (g.attending === 'no') m.mealChoice = '';  // no dinner for someone who isn't coming
+      }
+      if (g.mealChoice !== undefined && m.attending !== 'no') m.mealChoice = g.mealChoice;
+      if (g.dietaryRestrictions !== undefined) m.dietaryRestrictions = g.dietaryRestrictions;
+    });
+    if (payload.songRequest !== undefined) d.songRequest = payload.songRequest;
+    if (payload.specialSong !== undefined) d.specialSong = payload.specialSong;
   }
 
   /* ---------- Already RSVPed (picked their name in the search) ---------- */
