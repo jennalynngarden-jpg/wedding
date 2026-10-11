@@ -5,7 +5,8 @@
    SETUP INSTRUCTIONS:
    1. Create a Google Spreadsheet with two sheets (tabs):
       - "GuestList" with columns: guestId, partyId, displayName, relationship, hasResponded
-      - "Responses" with columns: timestamp, partyId, guestId, guestName, attending, mealChoice, dietaryRestrictions, songRequest, submittedBy, specialSong, email
+      - "Responses" with columns: timestamp, partyId, guestId, guestName, attending, mealChoice, dietaryRestrictions, songRequest, submittedBy, specialSong, email, rsvpCode, emailStatus, photoIds
+        (rsvpCode, emailStatus, and photoIds are filled in automatically)
    2. Create a Google Drive folder for photo uploads
    3. Replace SPREADSHEET_ID and PHOTO_FOLDER_ID below with your actual IDs
    4. Deploy: Deploy > New deployment > Web app
@@ -72,6 +73,30 @@ var STATUS_COLUMN = 13;  // Responses column M: emailStatus ("pending" or "sent"
 // If they leave the page instead, a timer sends it after this many minutes.
 var PENDING_EMAIL_MINUTES = 15;
 
+// Deadlines for changing an RSVP (Pacific time):
+//   - who's coming (switching between yes and no): until the end of May 24, 2027
+//     (the RSVP deadline)
+//   - dinner choices and optional answers: until the end of July 14, 2027
+//     (10 days before the wedding, when final numbers go to the venue)
+var ATTENDANCE_DEADLINE = new Date('2027-05-25T07:00:00Z');  // midnight after May 24, Pacific
+var EDIT_DEADLINE = new Date('2027-07-15T07:00:00Z');        // midnight after July 14, Pacific
+
+// Responses column N: the guest's photos (Drive file IDs, separated by commas),
+// kept on the first row of each RSVP, so their Your RSVP page can show them
+var PHOTOS_COLUMN = 14;
+
+// Guest map pins live in their own spreadsheet ("GuestPins" tab):
+//   A timestamp | B name | C lat | D lng | E pinId | F rsvpCode | G removeKey | H city
+// F and G are filled in automatically: they link a pin to the RSVP that added
+// it, so only that guest can move or remove it (from their Your RSVP page).
+var PINS_SPREADSHEET_ID = '1f6kn6VXJiKXJVi_WfWhq_LcBbkMKu2GDKpH62Gvknjs';
+var PINS_SHEET = 'GuestPins';
+
+// Jenna & Liam get an email about every new RSVP and every change. Their
+// addresses are NOT in this file (it's public on GitHub): they're saved in
+// Project Settings > Script properties, as NOTIFY_EMAILS (comma-separated).
+var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/edit';
+
 /* ---------- Web App Entry Points ---------- */
 
 function doGet(e) {
@@ -88,6 +113,18 @@ function doGet(e) {
   }
   if (action === 'getRsvpByCode') {
     return getRsvpByCode(e.parameter.code);
+  }
+  if (action === 'rsvpLinkHint') {
+    return rsvpLinkHint(e.parameter.guestId);
+  }
+  if (action === 'getPins') {
+    return getPins();
+  }
+  if (action === 'addPin') {
+    return addPin(e.parameter);
+  }
+  if (action === 'removePin') {
+    return removePin(e.parameter);
   }
   if (action === 'getAttendees') {
     return getAttendees(e.parameter.excludeParty);
@@ -117,6 +154,18 @@ function doPost(e) {
   }
   if (action === 'uploadPhoto') {
     return uploadPhoto(data);
+  }
+  if (action === 'updateRsvp') {
+    return updateRsvp(data);
+  }
+  if (action === 'updateAnswers') {
+    return updateRsvp(data);
+  }
+  if (action === 'removePhoto') {
+    return removePhoto(data);
+  }
+  if (action === 'sendRsvpLink') {
+    return sendRsvpLink(data);
   }
   if (action === 'markPurchased') {
     return markPurchased(data);
@@ -175,12 +224,15 @@ function searchGuests(query) {
     var relationship = String(row[3]).toLowerCase();  // Column D
     var hasResponded = row[4];                        // Column E
 
-    // Show all adults in search, exclude children and plus-ones
-    if (relationship !== 'child' && relationship !== 'plusone' && !hasResponded && displayName.indexOf(queryLower) !== -1) {
+    // Show all adults in search, exclude children and plus-ones. Guests who
+    // already RSVPed are included and flagged, so the page can offer to email
+    // them a link to their RSVP.
+    if (relationship !== 'child' && relationship !== 'plusone' && displayName.indexOf(queryLower) !== -1) {
       results.push({
         guestId: row[0],
         partyId: row[1],
-        displayName: row[2]
+        displayName: row[2],
+        hasResponded: hasResponded === true || String(hasResponded).toUpperCase() === 'TRUE'
       });
     }
   }
@@ -265,6 +317,13 @@ function submitRsvp(data) {
     }
   }
 
+  // Let Jenna & Liam know (if this fails, the RSVP is still saved)
+  try {
+    notifyNewRsvp(data);
+  } catch (err) {
+    console.error('New RSVP notification failed: ' + err);
+  }
+
   return jsonResponse({ success: true, code: code });
 }
 
@@ -333,66 +392,68 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Writes the email for one RSVP. Returns { subject, text, html }.
-//   info: { firstName, guests: [{ guestName, attending, mealChoice,
-//           dietaryRestrictions }], songRequest, specialSong,
-//           finishedExtras, link }
-// Three versions:
-//   - Coming, optional questions finished: summary only
-//   - Coming, optional questions not finished: summary + "Answer optional questions"
-//   - Not coming: short note + "Update your RSVP"
-function composeEmail(info) {
-  var coming = info.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
-  var hello = info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,';
-  var subject = 'Your RSVP to Jenna and Liam’s wedding';
-  var paragraphs, closing, buttonText = '', afterButton = '';
-  var summaryText = '';
-  var summaryHtml = '';
-
-  function addRow(title, details) {
-    summaryText += '\n  ' + title + ': ' + details;
-    // Sizes are set right on the cell: some email apps (like Apple Mail)
-    // don't pass the email's text size into tables, so they came out small
-    summaryHtml += '<tr><td style="padding:10px 0;border-bottom:1px solid #e8e4df;font-size:16px;line-height:1.5;">' +
-      '<strong style="color:#2c3e2d;font-size:16px;">' + escapeHtml(title) + '</strong><br>' +
-      '<span style="color:#6b6b6b;font-size:16px;">' + escapeHtml(details) + '</span></td></tr>';
+// The sentence about deadlines for guest emails (depends on today's date).
+// anyoneComing: whether anyone on the RSVP is coming.
+function changeDeadlineText(anyoneComing) {
+  var now = new Date();
+  if (!anyoneComing) {
+    return now < ATTENDANCE_DEADLINE ? 'If your plans change, you can update your RSVP before May 24, 2027.' : '';
   }
-
-  if (coming) {
-    paragraphs = ['Thanks for RSVPing! Here’s what we have for you:'];
-    info.guests.forEach(function (g) {
-      var details = [attendingLabel(g.attending)];
-      if (g.mealChoice) details.push(g.mealChoice);
-      if (g.dietaryRestrictions) details.push('Dietary notes: ' + g.dietaryRestrictions);
-      addRow(g.guestName, details.join(' · '));
-    });
-    if (info.specialSong) addRow('Your special song', info.specialSong);
-    if (info.songRequest) addRow('Your song requests', info.songRequest);
-
-    if (info.finishedExtras) {
-      closing = 'Need to change anything? Just reply to this email.';
-    } else {
-      closing = 'Didn’t get to our optional questions about music, photos, and where you’re ' +
-        'traveling from? You can answer them anytime with the button below.';
-      buttonText = 'Answer optional questions';
-      afterButton = 'Need to change anything else? Just reply to this email.';
-    }
-  } else {
-    paragraphs = ['Thanks for letting us know you can’t make it. We’ll miss you, and we’re grateful for your love and friendship!'];
-    closing = 'If your plans change, you can update your RSVP anytime before May 24, 2027.';
-    buttonText = 'Update your RSVP';
+  if (now < ATTENDANCE_DEADLINE) {
+    return 'You can change who’s coming until May 24, 2027, and everything else until July 14, 2027.';
   }
+  if (now < EDIT_DEADLINE) return 'You can update dinner choices and your other answers until July 14, 2027.';
+  return '';
+}
+
+// Can this RSVP still be changed at all? (People who are coming can change
+// dinner and answers until July 14; a "can't make it" RSVP until May 24.)
+function rsvpStillEditable(anyoneComing) {
+  var now = new Date();
+  return anyoneComing ? now < EDIT_DEADLINE : now < ATTENDANCE_DEADLINE;
+}
+
+// One row per guest for the summary in guest emails:
+// "Wedding & rehearsal dinner · Chicken · Dietary notes: ..."
+function guestSummaryRows(guests, songRequest, specialSong) {
+  var rows = [];
+  guests.forEach(function (g) {
+    var details = [attendingLabel(g.attending)];
+    if (g.attending !== 'no' && g.mealChoice) details.push(g.mealChoice);
+    if (g.attending !== 'no' && g.dietaryRestrictions) details.push('Dietary notes: ' + g.dietaryRestrictions);
+    rows.push([g.guestName, details.join(' · ')]);
+  });
+  if (specialSong) rows.push(['Your special song', specialSong]);
+  if (songRequest) rows.push(['Your song requests', songRequest]);
+  return rows;
+}
+
+// Builds a guest email in the website's style. Returns { subject, text, html }.
+//   e: { subject, hello, paragraphs: [...], rows: [[title, details]],
+//        closing: [...], buttonText, link }
+function buildGuestEmail(e) {
+  var paragraphs = (e.paragraphs || []).filter(Boolean);
+  var closing = (e.closing || []).filter(Boolean);
+  var rows = e.rows || [];
 
   // Plain-text version (for email apps that don't show formatting)
-  var text = hello + '\n\n' + paragraphs.join('\n\n') + summaryText + '\n\n' + closing +
-    (buttonText ? '\n' + buttonText + ': ' + info.link : '') +
-    (afterButton ? '\n\n' + afterButton : '') + '\n\nLove,\nJenna & Liam';
+  var text = e.hello + '\n\n' + paragraphs.join('\n\n') +
+    rows.map(function (r) { return '\n  ' + r[0] + ': ' + r[1]; }).join('') +
+    (closing.length ? '\n\n' + closing.join('\n\n') : '') +
+    (e.buttonText ? '\n' + e.buttonText + ': ' + e.link : '') +
+    '\n\nLove,\nJenna & Liam';
 
-  // Formatted version, in the website's colors and fonts
-  var button = buttonText
+  // Sizes are set right on each table cell: some email apps (like Apple Mail)
+  // don't pass the email's text size into tables, so they came out small
+  var rowsHtml = rows.map(function (r) {
+    return '<tr><td style="padding:10px 0;border-bottom:1px solid #e8e4df;font-size:16px;line-height:1.5;">' +
+      '<strong style="color:#2c3e2d;font-size:16px;">' + escapeHtml(r[0]) + '</strong><br>' +
+      '<span style="color:#6b6b6b;font-size:16px;">' + escapeHtml(r[1]) + '</span></td></tr>';
+  }).join('');
+  var button = e.buttonText
     ? '<p style="text-align:center;margin:24px 0;">' +
-        '<a href="' + info.link + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">' +
-        escapeHtml(buttonText) + '</a></p>'
+        '<a href="' + e.link + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">' +
+        escapeHtml(e.buttonText) + '</a></p>'
     : '';
   var html =
     '<div style="background:#ffffff;padding:24px 16px;font-family:Helvetica,Arial,sans-serif;color:#3a3a3a;font-size:15px;line-height:1.6;">' +
@@ -402,17 +463,215 @@ function composeEmail(info) {
           '<img src="' + EMAIL_CREST_URL + '" width="160" alt="" style="width:160px;max-width:60%;height:auto;border:0;"></p>' +
         '<p style="font-family:Georgia,serif;font-size:22px;color:#2c3e2d;text-align:center;margin:0 0 4px;">Jenna &amp; Liam</p>' +
         '<p style="text-align:center;color:#6b6b6b;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 28px;">July 24, 2027 &middot; Monterey, California</p>' +
-        '<p>' + escapeHtml(hello) + '</p>' +
+        '<p>' + escapeHtml(e.hello) + '</p>' +
         paragraphs.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join('') +
-        (summaryHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + summaryHtml + '</table>' : '') +
-        '<p>' + escapeHtml(closing) + '</p>' +
+        (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
+        closing.map(function (p) { return '<p>' + escapeHtml(p) + '</p>'; }).join('') +
         button +
-        (afterButton ? '<p>' + escapeHtml(afterButton) + '</p>' : '') +
         '<p>Love,<br>Jenna &amp; Liam</p>' +
       '</div>' +
     '</div>';
 
-  return { subject: subject, text: text, html: html };
+  return { subject: e.subject, text: text, html: html };
+}
+
+// The confirmation email for a new RSVP.
+//   info: { firstName, guests: [{ guestName, attending, mealChoice,
+//           dietaryRestrictions }], songRequest, specialSong,
+//           finishedExtras, answeredOptional, link }
+// The optional questions are only mentioned if they haven't answered any
+// of them (and didn't go through them on the page).
+function composeEmail(info) {
+  var coming = info.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+  var hello = info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,';
+  var deadline = changeDeadlineText(coming);
+  var editable = rsvpStillEditable(coming);
+
+  if (coming) {
+    var answered = info.finishedExtras || info.answeredOptional;
+    var closing;
+    if (answered) {
+      closing = deadline ? 'Need to change anything? ' + deadline : 'Need to change anything? Just reply to this email.';
+    } else {
+      closing = 'Want to answer our optional questions about music, photos, and where you’re traveling from? ' +
+        'You can do that from your RSVP page' + (deadline ? ', and make changes there too. ' + deadline : '.');
+    }
+    return buildGuestEmail({
+      subject: 'Your RSVP to Jenna and Liam’s wedding',
+      hello: hello,
+      paragraphs: ['Thanks for RSVPing! Here’s what we have for you:'],
+      rows: guestSummaryRows(info.guests, info.songRequest, info.specialSong),
+      closing: [closing],
+      buttonText: editable ? 'View or update your RSVP' : 'View your RSVP',
+      link: info.link
+    });
+  }
+  return buildGuestEmail({
+    subject: 'Your RSVP to Jenna and Liam’s wedding',
+    hello: hello,
+    paragraphs: ['Thanks for letting us know you can’t make it. We’ll miss you, and we’re grateful for your love and friendship!'],
+    closing: [deadline],
+    buttonText: editable ? 'Update your RSVP' : '',
+    link: info.link
+  });
+}
+
+// The email after a guest changes their RSVP on their Your RSVP page
+//   info: { firstName, guests, songRequest, specialSong, link }
+function composeUpdateEmail(info) {
+  var coming = info.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+  var hello = info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,';
+  var editable = rsvpStillEditable(coming);
+  if (coming) {
+    return buildGuestEmail({
+      subject: 'Your updated RSVP to Jenna and Liam’s wedding',
+      hello: hello,
+      paragraphs: ['Your changes are saved. Here’s your updated RSVP:'],
+      rows: guestSummaryRows(info.guests, info.songRequest, info.specialSong),
+      closing: [changeDeadlineText(true)],
+      buttonText: editable ? 'View or update your RSVP' : 'View your RSVP',
+      link: info.link
+    });
+  }
+  return buildGuestEmail({
+    subject: 'Your updated RSVP to Jenna and Liam’s wedding',
+    hello: hello,
+    paragraphs: ['Thanks for letting us know you can’t make it anymore. We’ll miss you, and we’re grateful for your love and friendship!'],
+    closing: [new Date() < ATTENDANCE_DEADLINE ? 'If your plans change again, you can update your RSVP until May 24, 2027.' : ''],
+    buttonText: editable ? 'Update your RSVP' : '',
+    link: info.link
+  });
+}
+
+// The email with a private link, for guests who already RSVPed and asked for
+// it on the RSVP page. No RSVP details, since whoever asked may not be the
+// person who RSVPed.
+function composeLinkEmail(info) {
+  return buildGuestEmail({
+    subject: 'Your link to view or update your RSVP',
+    hello: info.firstName ? 'Hi ' + info.firstName + ',' : 'Hi there,',
+    paragraphs: ['Here’s your private link to see your RSVP to our wedding and make changes.'],
+    closing: [changeDeadlineText(info.anyoneComing), 'Didn’t ask for this link? You can ignore this email.'],
+    buttonText: 'View or update your RSVP',
+    link: info.link
+  });
+}
+
+/* ---------- Emails to Jenna & Liam ---------- */
+
+// How many guests are coming, can't make it, or haven't RSVPed yet (each
+// guest's latest answer counts)
+function rsvpCounts() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var guests = ss.getSheetByName(GUEST_SHEET).getDataRange().getValues();
+  var responses = ss.getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var latest = {};
+  for (var i = 1; i < responses.length; i++) latest[responses[i][2]] = String(responses[i][4] || '');
+  var counts = { coming: 0, cant: 0, waiting: 0 };
+  for (var j = 1; j < guests.length; j++) {
+    if (!guests[j][0]) continue;
+    var a = latest[guests[j][0]];
+    if (a === undefined || a === '') counts.waiting++;
+    else if (a === 'no') counts.cant++;
+    else counts.coming++;
+  }
+  return counts;
+}
+
+// Builds an email to Jenna & Liam. Returns { subject, text, html }.
+//   e: { subject, heading, counts (optional): { coming, cant, waiting,
+//        change: { coming, cant } }, intro, rows: [[title, details]], closing }
+function buildCoupleEmail(e) {
+  var c = e.counts;
+  function tag(n) {
+    if (!n) return '';
+    return ' <span style="display:inline-block;background:#ffffff;color:#5c7a4e;font-size:12px;font-weight:bold;padding:2px 7px;border-radius:10px;vertical-align:middle;">' +
+      (n > 0 ? '+' + n : '−' + Math.abs(n)) + '</span>';
+  }
+  function box(num, label, bg, border, change) {
+    return '<td width="33%" style="padding:0 5px;">' +
+      '<div style="background:' + bg + ';' + (border ? 'border:1px solid #e8e4df;' : '') + 'border-radius:8px;padding:14px 6px 12px;text-align:center;">' +
+        '<div style="font-family:Georgia,serif;font-size:30px;line-height:1.2;color:#2c3e2d;">' + num + tag(change) + '</div>' +
+        '<div style="font-size:11px;letter-spacing:1.5px;color:#6b6b6b;font-weight:bold;">' + label + '</div>' +
+      '</div></td>';
+  }
+  var countsHtml = c
+    ? '<table style="width:100%;border-collapse:collapse;margin:4px -5px 18px;"><tr>' +
+        box(c.coming, 'COMING', '#e8efe5', false, c.change && c.change.coming) +
+        box(c.cant, 'CAN’T MAKE IT', '#f4f2ee', false, c.change && c.change.cant) +
+        box(c.waiting, 'NO RSVP YET', '#ffffff', true, 0) +
+      '</tr></table>'
+    : '';
+  var rowsHtml = (e.rows || []).map(function (r) {
+    return '<tr><td style="padding:10px 0;border-bottom:1px solid #e8e4df;font-size:16px;line-height:1.5;">' +
+      '<strong style="color:#2c3e2d;font-size:16px;">' + escapeHtml(r[0]) + '</strong><br>' +
+      '<span style="color:#6b6b6b;font-size:16px;">' + escapeHtml(r[1]) + '</span></td></tr>';
+  }).join('');
+  var html =
+    '<div style="background:#ffffff;padding:24px 16px;font-family:Helvetica,Arial,sans-serif;color:#3a3a3a;font-size:15px;line-height:1.6;">' +
+      '<div style="max-width:520px;margin:0 auto;">' +
+        '<p style="font-size:11px;letter-spacing:2px;color:#7a9a6d;font-weight:bold;margin:0 0 6px;">WEDDING WEBSITE</p>' +
+        '<p style="font-family:Georgia,serif;font-size:22px;color:#2c3e2d;margin:0 0 14px;">' + escapeHtml(e.heading) + '</p>' +
+        countsHtml +
+        '<p>' + escapeHtml(e.intro) + '</p>' +
+        (rowsHtml ? '<table style="width:100%;border-collapse:collapse;margin:8px 0 20px;">' + rowsHtml + '</table>' : '') +
+        (e.closing ? '<p>' + escapeHtml(e.closing) + '</p>' : '') +
+        '<p style="text-align:center;margin:24px 0 8px;">' +
+          '<a href="' + SHEET_URL + '" style="background:#2c3e2d;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;display:inline-block;">Open RSVP sheet</a></p>' +
+      '</div>' +
+    '</div>';
+  var text = e.heading + '\n\n' +
+    (c ? 'Coming: ' + c.coming + ' · Can’t make it: ' + c.cant + ' · No RSVP yet: ' + c.waiting + '\n\n' : '') +
+    e.intro + (e.rows || []).map(function (r) { return '\n  ' + r[0] + ': ' + r[1]; }).join('') +
+    (e.closing ? '\n\n' + e.closing : '') + '\n\nRSVP sheet: ' + SHEET_URL;
+  return { subject: e.subject, text: text, html: html };
+}
+
+// Sends an email to Jenna & Liam (if their addresses are set up)
+function notifyCouple(email) {
+  var to = PropertiesService.getScriptProperties().getProperty('NOTIFY_EMAILS');
+  if (!to) {
+    console.log('NOTIFY_EMAILS isn’t set in Script properties, so no notification was sent.');
+    return;
+  }
+  sendComposedEmail(to, email);
+}
+
+function nowLabel() {
+  return Utilities.formatDate(new Date(), 'America/Los_Angeles', "MMM d 'at' h:mm a");
+}
+
+// "Morgan Lee" or "Morgan Lee's party"
+function partyLabel(name, size) {
+  return size > 1 ? name + '’s party' : name;
+}
+
+// After a new RSVP is saved
+function notifyNewRsvp(data) {
+  var guests = data.guests || [];
+  var submitter = guests.filter(function (g) { return g.guestId === data.submittedBy; })[0] || guests[0];
+  var name = submitter ? submitter.guestName : 'Someone';
+  var coming = guests.filter(function (g) { return g.attending && g.attending !== 'no'; }).length;
+  var cant = guests.length - coming;
+  var counts = rsvpCounts();
+  counts.change = { coming: coming, cant: cant };
+
+  var subject = coming === 0
+    ? 'New RSVP: ' + partyLabel(name, guests.length) + ' can’t make it'
+    : 'New RSVP: ' + partyLabel(name, guests.length) + ' (' + coming + ' coming' + (cant ? ', ' + cant + ' can’t' : '') + ')';
+  var rows = guests.map(function (g) {
+    var details = [attendingLabel(g.attending)];
+    if (g.attending !== 'no' && g.mealChoice) details.push(g.mealChoice);
+    if (g.attending !== 'no' && g.dietaryRestrictions) details.push('Dietary notes: ' + g.dietaryRestrictions);
+    return [g.guestName, details.join(' · ')];
+  });
+  notifyCouple(buildCoupleEmail({
+    subject: subject,
+    heading: 'New RSVP',
+    counts: counts,
+    intro: name + ' just RSVPed' + (guests.length > 1 ? ' for their party' : '') + ' (' + nowLabel() + ').',
+    rows: rows
+  }));
 }
 
 function sendComposedEmail(to, email) {
@@ -432,7 +691,7 @@ function sendConfirmationForCode(code, finishedExtras) {
   try {
     var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
     var rows = sheet.getDataRange().getValues();
-    var rowNumbers = [], guests = [], info = { songRequest: '', specialSong: '', email: '', submittedBy: '' };
+    var rowNumbers = [], guests = [], info = { songRequest: '', specialSong: '', email: '', submittedBy: '', photos: '' };
 
     for (var i = 1; i < rows.length; i++) {
       var r = rows[i];
@@ -444,6 +703,7 @@ function sendConfirmationForCode(code, finishedExtras) {
       info.submittedBy = r[8];
       info.specialSong = info.specialSong || r[9];
       info.email = r[10];
+      info.photos = info.photos || r[PHOTOS_COLUMN - 1];
     }
     if (!rowNumbers.length || !info.email) return;
 
@@ -458,6 +718,8 @@ function sendConfirmationForCode(code, finishedExtras) {
       songRequest: info.songRequest,
       specialSong: info.specialSong,
       finishedExtras: finishedExtras,
+      // Answered any optional question? Then the email won't ask them to
+      answeredOptional: !!(info.songRequest || info.specialSong || info.photos || pinForCode(code)),
       link: RSVP_PAGE_URL + '?code=' + code
     }));
 
@@ -507,7 +769,7 @@ function sendPendingEmails() {
 // at the top, then click Run). It:
 //   1. asks for permission to send email and run on a timer,
 //   2. starts the 10-minute timer for waiting emails, and
-//   3. sends you all three sample emails to check the wording and design.
+//   3. sends you a sample of every email, to check the wording and design.
 function setUpEmails() {
   var hasTimer = ScriptApp.getProjectTriggers().some(function (t) {
     return t.getHandlerFunction() === 'sendPendingEmails';
@@ -515,25 +777,41 @@ function setUpEmails() {
   if (!hasTimer) {
     ScriptApp.newTrigger('sendPendingEmails').timeBased().everyMinutes(10).create();
   }
+  sendSampleEmails();
+}
 
+// Sends you (whoever runs it) a sample of every email
+function sendSampleEmails() {
   var me = Session.getActiveUser().getEmail();
   var guests = [
     { guestId: 'S1', guestName: 'Sample Guest', attending: 'wedding-and-rehearsal', mealChoice: 'Salmon', dietaryRestrictions: '' },
     { guestId: 'S2', guestName: 'Sample Plusone', attending: 'yes', mealChoice: 'Chicken', dietaryRestrictions: 'No nuts' }
   ];
+  var declined = [{ guestId: 'S1', guestName: 'Sample Guest', attending: 'no' }];
   var link = RSVP_PAGE_URL + '?code=sample';
-  sendComposedEmail(me, composeEmail({ firstName: 'Sample', guests: guests, finishedExtras: false, link: link }));
+  sendComposedEmail(me, composeEmail({ firstName: 'Sample', guests: guests, link: link }));
   sendComposedEmail(me, composeEmail({ firstName: 'Sample', guests: guests, songRequest: 'September by Earth, Wind & Fire',
-    specialSong: 'At Last by Etta James', finishedExtras: true, link: link }));
-  sendComposedEmail(me, composeEmail({ firstName: 'Sample',
-    guests: [{ guestId: 'S1', guestName: 'Sample Guest', attending: 'no' }], link: link }));
+    specialSong: 'At Last by Etta James', answeredOptional: true, link: link }));
+  sendComposedEmail(me, composeEmail({ firstName: 'Sample', guests: declined, link: link }));
+  sendComposedEmail(me, composeUpdateEmail({ firstName: 'Sample', guests: guests, link: link }));
+  sendComposedEmail(me, composeUpdateEmail({ firstName: 'Sample', guests: declined, link: link }));
+  sendComposedEmail(me, composeLinkEmail({ firstName: 'Sample', anyoneComing: true, link: link }));
+  var counts = rsvpCounts();
+  counts.change = { coming: 2, cant: 0 };
+  var sample = buildCoupleEmail({ subject: '(Sample) New RSVP: Sample Guest’s party (2 coming)', heading: 'New RSVP', counts: counts,
+    intro: 'Sample Guest just RSVPed for their party (' + nowLabel() + ').',
+    rows: guestSummaryRows(guests) });
+  sendComposedEmail(me, sample);
+  sendComposedEmail(me, buildCoupleEmail({ subject: '(Sample) RSVP change: Sample Guest’s party', heading: 'RSVP change',
+    intro: 'Sample Guest updated their party’s RSVP (' + nowLabel() + '). Here’s what changed:',
+    rows: [['Sample Plusone', 'Dinner: Chicken → Salmon']],
+    closing: 'Everything else stayed the same. Their full RSVP is in the Responses tab.' }));
 }
 
 /* ---------- GET: Look up an RSVP from an email link ---------- */
-// Returns the party for the RSVP with this code, marking which guests were
-// part of it (inCode) and what they answered, so the page can either open
-// the optional questions (if anyone's coming) or let a "can't make it"
-// party update their RSVP.
+// Everything the Your RSVP page shows for the RSVP with this private code:
+// each person's answers, the optional answers (songs, photos, map pin), and
+// whether the deadlines for changes have passed.
 
 function getRsvpByCode(code) {
   if (!code) return jsonResponse({ error: 'Missing code' });
@@ -541,12 +819,18 @@ function getRsvpByCode(code) {
   var rows = ss.getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
 
   var partyId = null, submittedBy = null, answers = {};
+  var songRequest = '', specialSong = '', photoIds = '';
   for (var i = 1; i < rows.length; i++) {
-    if (rows[i][CODE_COLUMN - 1] === code) {
-      partyId = rows[i][1];          // B: partyId
-      submittedBy = rows[i][8];      // I: submittedBy
-      answers[rows[i][2]] = rows[i][4];  // C: guestId -> E: attending
-    }
+    var r = rows[i];
+    if (r[CODE_COLUMN - 1] !== code) continue;
+    partyId = r[1];          // B: partyId
+    submittedBy = r[8];      // I: submittedBy
+    answers[r[2]] = {        // C: guestId
+      guestName: r[3], attending: r[4], mealChoice: r[5], dietaryRestrictions: r[6]
+    };
+    songRequest = songRequest || r[7];
+    specialSong = specialSong || r[9];
+    photoIds = photoIds || r[PHOTOS_COLUMN - 1];
   }
   if (!partyId) return jsonResponse({ error: 'Not found' });
 
@@ -556,18 +840,259 @@ function getRsvpByCode(code) {
     var row = guests[j];
     if (row[1] !== partyId) continue;
     if (row[0] === submittedBy) partnershipStatus = row[6] || '';
+    var a = answers[row[0]];
     members.push({
       guestId: row[0],
-      displayName: row[2],
+      displayName: a ? a.guestName : row[2],
       relationship: String(row[3]).toLowerCase(),
       hasResponded: row[4] === true || String(row[4]).toUpperCase() === 'TRUE',
       rehearsalDinner: row[7] === true || String(row[7]).toUpperCase() === 'TRUE',
-      inCode: answers.hasOwnProperty(row[0]),
-      attending: answers[row[0]] || ''
+      inCode: !!a,
+      attending: a ? a.attending : '',
+      mealChoice: a ? a.mealChoice : '',
+      dietaryRestrictions: a ? a.dietaryRestrictions : ''
     });
   }
 
-  return jsonResponse({ partyId: partyId, submittedBy: submittedBy, partnershipStatus: partnershipStatus, members: members });
+  var photos = splitIds(photoIds).map(function (id) {
+    return { id: id, url: 'https://drive.google.com/thumbnail?id=' + id + '&sz=w400' };
+  });
+  var pin = pinForCode(code);
+  var now = new Date();
+
+  return jsonResponse({
+    partyId: partyId,
+    submittedBy: submittedBy,
+    partnershipStatus: partnershipStatus,
+    members: members,
+    songRequest: songRequest,
+    specialSong: specialSong,
+    photos: photos,
+    pin: pin ? { city: pin.city } : null,
+    attendanceOpen: now < ATTENDANCE_DEADLINE,
+    editsOpen: now < EDIT_DEADLINE
+  });
+}
+
+function splitIds(value) {
+  return String(value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+}
+
+// The Responses rows for one RSVP: { rows (sheet values), rowNumbers: { guestId: row } }
+function rowsForCode(sheet, code) {
+  var values = sheet.getDataRange().getValues();
+  var rowNumbers = {}, first = null;
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][CODE_COLUMN - 1] !== code) continue;
+    rowNumbers[values[i][2]] = i;
+    if (first === null) first = i;
+  }
+  return { values: values, rowNumbers: rowNumbers, first: first };
+}
+
+/* ---------- POST: Change an RSVP (from the Your RSVP page) ---------- */
+// Updates the RSVP's rows in the Responses tab (in place, so each guest
+// still has one row). Only the fields sent are changed:
+//   data: { code, guests: [{ guestId, attending, mealChoice,
+//           dietaryRestrictions, guestName (for a +1) }], songRequest, specialSong }
+// Switching between yes and no closes May 24; everything else July 14.
+// Afterward, the guest gets an updated copy and Jenna & Liam get an email
+// listing what changed.
+
+function updateRsvp(data) {
+  var code = String(data.code || '');
+  if (!/^[a-f0-9]{16,64}$/.test(code)) return jsonResponse({ error: 'Bad code' });
+  var now = new Date();
+  if (now >= EDIT_DEADLINE) return jsonResponse({ error: 'closed' });
+
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(RESPONSE_SHEET);
+  var guestSheet = ss.getSheetByName(GUEST_SHEET);
+  var changes = [];          // [person, "Dinner: Chicken → Salmon"]
+  var comingChange = 0, cantChange = 0, attendanceChanged = false;
+  var info;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    var found = rowsForCode(sheet, code);
+    if (found.first === null) return jsonResponse({ error: 'Not found' });
+    var values = found.values;
+
+    (data.guests || []).forEach(function (g) {
+      var i = found.rowNumbers[g.guestId];
+      if (i === undefined) return;  // only people on this RSVP
+      var row = values[i];
+      var name = row[3];
+      var personChanges = [];
+
+      // A +1's name
+      if (g.guestName && String(g.guestName).trim() && String(g.guestName).trim() !== String(row[3])) {
+        var newName = String(g.guestName).trim().slice(0, 80);
+        personChanges.push('Name: ' + row[3] + ' → ' + newName);
+        sheet.getRange(i + 1, 4).setValue(newName);
+        updatePlusOneName(guestSheet, g.guestId, newName);
+        row[3] = newName;
+        name = newName;
+      }
+      // Coming or not (until May 24)
+      if (g.attending !== undefined && g.attending !== row[4] && now < ATTENDANCE_DEADLINE) {
+        var wasComing = row[4] && row[4] !== 'no', nowComing = g.attending !== 'no';
+        personChanges.push(attendingLabel(row[4]) + ' → ' + attendingLabel(g.attending));
+        sheet.getRange(i + 1, 5).setValue(g.attending);
+        comingChange += (nowComing ? 1 : 0) - (wasComing ? 1 : 0);
+        cantChange += (g.attending === 'no' ? 1 : 0) - (row[4] === 'no' ? 1 : 0);
+        attendanceChanged = true;
+        row[4] = g.attending;
+        if (!nowComing && row[5]) {  // no dinner for someone who isn't coming
+          sheet.getRange(i + 1, 6).setValue('');
+          row[5] = '';
+        }
+      }
+      // Dinner and dietary notes
+      if (g.mealChoice !== undefined && row[4] !== 'no' && String(g.mealChoice) !== String(row[5])) {
+        personChanges.push('Dinner: ' + (row[5] || 'none') + ' → ' + (g.mealChoice || 'none'));
+        sheet.getRange(i + 1, 6).setValue(g.mealChoice);
+        row[5] = g.mealChoice;
+      }
+      if (g.dietaryRestrictions !== undefined && String(g.dietaryRestrictions) !== String(row[6])) {
+        personChanges.push('Dietary notes: ' + (row[6] || 'none') + ' → ' + (g.dietaryRestrictions || 'none'));
+        sheet.getRange(i + 1, 7).setValue(g.dietaryRestrictions);
+        row[6] = g.dietaryRestrictions;
+      }
+      if (personChanges.length) changes.push([name, personChanges.join(' · ')]);
+    });
+
+    // Songs (saved on every row of the RSVP)
+    var rowList = Object.keys(found.rowNumbers).map(function (k) { return found.rowNumbers[k]; });
+    var firstRow = values[found.first];
+    [['songRequest', 8, 7, 'Song requests'], ['specialSong', 10, 9, 'Special song']].forEach(function (f) {
+      if (data[f[0]] === undefined) return;
+      var current = '';
+      rowList.forEach(function (i) { current = current || values[i][f[2]]; });
+      var next = String(data[f[0]] || '').trim().slice(0, 500);
+      if (next === String(current || '')) return;
+      changes.push([f[3], (current || 'none') + ' → ' + (next || 'none')]);
+      rowList.forEach(function (i) { sheet.getRange(i + 1, f[1]).setValue(next); values[i][f[2]] = next; });
+    });
+    SpreadsheetApp.flush();
+
+    // What the emails need
+    var guests = rowList.map(function (i) {
+      var r = values[i];
+      return { guestId: r[2], guestName: r[3], attending: r[4], mealChoice: r[5], dietaryRestrictions: r[6] };
+    });
+    var submitter = guests.filter(function (g) { return g.guestId === firstRow[8]; })[0] || guests[0];
+    var song = '', special = '';
+    rowList.forEach(function (i) { song = song || values[i][7]; special = special || values[i][9]; });
+    info = { guests: guests, submitter: submitter, email: firstRow[10], songRequest: song, specialSong: special };
+  } finally {
+    lock.releaseLock();
+  }
+
+  if (!changes.length) return jsonResponse({ success: true, changed: false });
+
+  // Updated copy for the guest, and the list of changes for Jenna & Liam.
+  // (If an email fails, the changes are still saved.)
+  var anyoneComing = info.guests.some(function (g) { return g.attending && g.attending !== 'no'; });
+  try {
+    if (info.email) {
+      sendComposedEmail(info.email, composeUpdateEmail({
+        firstName: String(info.submitter.guestName).split(' ')[0],
+        guests: info.guests, songRequest: info.songRequest, specialSong: info.specialSong,
+        link: RSVP_PAGE_URL + '?code=' + code
+      }));
+    }
+  } catch (err) {
+    console.error('Update email failed: ' + err);
+  }
+  try {
+    var who = info.submitter.guestName;
+    var size = info.guests.length;
+    var counts = null;
+    if (attendanceChanged) {
+      counts = rsvpCounts();
+      counts.change = { coming: comingChange, cant: cantChange };
+    }
+    var allCant = attendanceChanged && !anyoneComing;
+    notifyCouple(buildCoupleEmail({
+      subject: 'RSVP change: ' + partyLabel(who, size) + (allCant ? ' can’t make it' : ''),
+      heading: 'RSVP change',
+      counts: counts,
+      intro: allCant
+        ? who + ' changed ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' to can’t make it (' + nowLabel() + ').'
+        : who + ' updated ' + (size > 1 ? 'their party’s RSVP' : 'their RSVP') + ' (' + nowLabel() + '). Here’s what changed:',
+      rows: changes,
+      closing: allCant
+        ? 'That’s ' + Math.abs(comingChange) + ' fewer ' + (Math.abs(comingChange) === 1 ? 'guest' : 'guests') + '.'
+        : 'Everything else stayed the same. Their full RSVP is in the Responses tab.'
+    }));
+  } catch (err) {
+    console.error('Change notification failed: ' + err);
+  }
+  return jsonResponse({ success: true, changed: true });
+}
+
+// When a +1's name changes, update it on the GuestList tab too
+function updatePlusOneName(guestSheet, guestId, name) {
+  var data = guestSheet.getDataRange().getValues();
+  for (var j = 1; j < data.length; j++) {
+    if (data[j][0] === guestId) {
+      if (String(data[j][3]).toLowerCase() === 'plusone') guestSheet.getRange(j + 1, 3).setValue(name);
+      return;
+    }
+  }
+}
+
+/* ---------- Already RSVPed: email them a private link ---------- */
+
+// The latest RSVP row for a guest that has an email address on it
+function latestRsvpRowFor(values, guestId) {
+  for (var i = values.length - 1; i >= 1; i--) {
+    if (values[i][2] === guestId && values[i][10] && values[i][CODE_COLUMN - 1]) return values[i];
+  }
+  return null;
+}
+
+// "m••••@gmail.com", so guests know which inbox to check without the page
+// showing the whole address
+function maskEmail(email) {
+  var parts = String(email).split('@');
+  if (parts.length !== 2) return '';
+  return parts[0].charAt(0) + '••••@' + parts[1];
+}
+
+// GET: which email address the link would go to (partly hidden)
+function rsvpLinkHint(guestId) {
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var row = latestRsvpRowFor(values, guestId);
+  if (!row) return jsonResponse({ error: 'no-email' });
+  return jsonResponse({ masked: maskEmail(row[10]) });
+}
+
+// POST: email the link (to the address used for their RSVP). Limited to a
+// few times an hour per guest, so it can't be used to flood anyone's inbox.
+function sendRsvpLink(data) {
+  var guestId = String(data.guestId || '');
+  var cache = CacheService.getScriptCache();
+  var key = 'rsvplink_' + guestId;
+  var sent = Number(cache.get(key) || 0);
+  if (sent >= 3) return jsonResponse({ error: 'too-many' });
+  cache.put(key, String(sent + 1), 3600);
+
+  var values = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET).getDataRange().getValues();
+  var row = latestRsvpRowFor(values, guestId);
+  if (!row) return jsonResponse({ error: 'no-email' });
+  var code = row[CODE_COLUMN - 1];
+  // Say hi to whoever owns the inbox (the person who submitted the RSVP)
+  var firstName = '', anyoneComing = false;
+  for (var i = 1; i < values.length; i++) {
+    if (values[i][CODE_COLUMN - 1] !== code) continue;
+    if (values[i][2] === row[8]) firstName = String(values[i][3]).split(' ')[0];
+    if (values[i][4] && values[i][4] !== 'no') anyoneComing = true;
+  }
+  sendComposedEmail(row[10], composeLinkEmail({ firstName: firstName, anyoneComing: anyoneComing, link: RSVP_PAGE_URL + '?code=' + code }));
+  return jsonResponse({ success: true });
 }
 
 /* ---------- POST: Submit Optional Answers (part 2 of the form) ---------- */
@@ -598,18 +1123,173 @@ function submitExtras(data) {
 }
 
 /* ---------- POST: Upload Photo ---------- */
+// With the RSVP's code, the photo is named after the guest (like
+// "Morgan Lee 2.jpg", so you can tell who sent what in Drive) and saved to
+// their RSVP, so they can see and remove it on their Your RSVP page.
 
 function uploadPhoto(data) {
   var folder = DriveApp.getFolderById(PHOTO_FOLDER_ID);
   var decoded = Utilities.base64Decode(data.base64Data);
-  var blob = Utilities.newBlob(decoded, data.mimeType, data.fileName);
-  var file = folder.createFile(blob);
+  var code = /^[a-f0-9]{16,64}$/.test(data.code || '') ? data.code : '';
+  var sheet = code ? SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET) : null;
+  var found = code ? rowsForCode(sheet, code) : null;
+  if (found && found.first === null) found = null;
+
+  var fileName = data.fileName;
+  if (found) {
+    var first = found.values[found.first];
+    var name = String(first[3]);
+    for (var k in found.rowNumbers) {
+      if (k === first[8]) name = String(found.values[found.rowNumbers[k]][3]);  // the person who RSVPed
+    }
+    var ext = (String(data.fileName).match(/\.[A-Za-z0-9]+$/) || ['.jpg'])[0];
+    fileName = name + ' ' + (splitIds(first[PHOTOS_COLUMN - 1]).length + 1) + ext;
+  }
+  var file = folder.createFile(Utilities.newBlob(decoded, data.mimeType, fileName));
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);  // so thumbnails show
+  } catch (e) {}
+
+  if (found) {
+    var lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    try {
+      var cell = sheet.getRange(found.first + 1, PHOTOS_COLUMN);
+      var ids = splitIds(cell.getValue());
+      ids.push(file.getId());
+      cell.setValue(ids.join(','));
+      if (!sheet.getRange(1, PHOTOS_COLUMN).getValue()) sheet.getRange(1, PHOTOS_COLUMN).setValue('photoIds');
+    } finally {
+      lock.releaseLock();
+    }
+  }
 
   return jsonResponse({
     success: true,
     fileId: file.getId(),
     fileUrl: file.getUrl()
   });
+}
+
+// POST: remove one of the guest's photos (moved to Drive's trash, so it can
+// still be recovered). Only photos saved to this RSVP can be removed.
+function removePhoto(data) {
+  var code = String(data.code || '');
+  if (!/^[a-f0-9]{16,64}$/.test(code)) return jsonResponse({ error: 'Bad code' });
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESPONSE_SHEET);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var found = rowsForCode(sheet, code);
+    if (found.first === null) return jsonResponse({ error: 'Not found' });
+    var cell = sheet.getRange(found.first + 1, PHOTOS_COLUMN);
+    var ids = splitIds(cell.getValue());
+    if (ids.indexOf(data.fileId) === -1) return jsonResponse({ error: 'Not found' });
+    try {
+      DriveApp.getFileById(data.fileId).setTrashed(true);
+    } catch (e) {}
+    cell.setValue(ids.filter(function (id) { return id !== data.fileId; }).join(','));
+  } finally {
+    lock.releaseLock();
+  }
+  return jsonResponse({ success: true });
+}
+
+/* ---------- Guest map pins ---------- */
+// (Moved here from the separate "Guest pins" project, so a pin can be linked
+// to the RSVP that added it.) Pins can only be removed by:
+//   - the guest, from their Your RSVP page (using their RSVP's code), or
+//   - the browser that just added it (the Undo button), using a private key
+//     only that browser was given.
+
+function pinsSheet() {
+  return SpreadsheetApp.openById(PINS_SPREADSHEET_ID).getSheetByName(PINS_SHEET);
+}
+
+// GET: all pins for the map (no codes or keys)
+function getPins() {
+  var data = pinsSheet().getDataRange().getValues();
+  var pins = [];
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (row[1] && row[2] && row[3]) {
+      pins.push({ name: row[1], lat: row[2], lng: row[3], pinId: row[4], city: row[7] || '' });
+    }
+  }
+  return jsonResponse({ pins: pins });
+}
+
+// The pin linked to an RSVP (or null)
+function pinForCode(code) {
+  if (!code) return null;
+  try {
+    var data = pinsSheet().getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][5] === code) return { pinId: data[i][4], city: data[i][7] || '' };
+    }
+  } catch (e) {}
+  return null;
+}
+
+// GET: add a pin. With an RSVP code, it replaces that RSVP's old pin (that's
+// how "Move" works). Returns a private key the page can use to undo it.
+function addPin(params) {
+  var lat = parseFloat(params.lat), lng = parseFloat(params.lng);
+  var name = String(params.name || '').trim().slice(0, 80);
+  if (!name || isNaN(lat) || isNaN(lng)) return jsonResponse({ error: 'Missing details' });
+  var code = /^[a-f0-9]{16,64}$/.test(params.code || '') ? params.code : '';
+  var pinId = /^[a-z0-9_]{6,60}$/.test(params.pinId || '') ? params.pinId
+    : 'pin_' + new Date().getTime() + '_' + Math.random().toString(36).substr(2, 9);
+  var key = Utilities.getUuid().replace(/-/g, '');
+  var sheet = pinsSheet();
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var data = sheet.getDataRange().getValues();
+    // The same pin sent twice (a slow connection): just answer again
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][4] === pinId) return jsonResponse({ success: true, pinId: pinId, removeKey: data[i][6] });
+    }
+    // Moving: take away this RSVP's old pin
+    if (code) {
+      for (var j = data.length - 1; j >= 1; j--) {
+        if (data[j][5] === code) sheet.deleteRow(j + 1);
+      }
+    }
+    sheet.appendRow([new Date(), name, lat, lng, pinId, code, key, String(params.city || '').slice(0, 80)]);
+    if (!sheet.getRange(1, 6).getValue()) {  // label the new columns once
+      sheet.getRange(1, 6, 1, 3).setValues([['rsvpCode', 'removeKey', 'city']]);
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  return jsonResponse({ success: true, pinId: pinId, removeKey: key });
+}
+
+// GET: remove a pin, with either its private key (Undo) or the RSVP's code
+// (Your RSVP page)
+function removePin(params) {
+  var code = /^[a-f0-9]{16,64}$/.test(params.code || '') ? params.code : '';
+  var key = String(params.key || '');
+  if (!code && !key) return jsonResponse({ error: 'Not allowed' });
+  var sheet = pinsSheet();
+  var removed = 0;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var data = sheet.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      var match = code ? data[i][5] === code : (data[i][4] === params.pinId && data[i][6] && data[i][6] === key);
+      if (match) {
+        sheet.deleteRow(i + 1);
+        removed++;
+      }
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  return jsonResponse(removed ? { success: true } : { error: 'Pin not found' });
 }
 
 /* ---------- GET: Get Confirmed Attendees ---------- */

@@ -4223,11 +4223,12 @@ a.pin-step-link {
   left: 0;
   right: 0;
   margin: 0;
-  padding: 0.25rem;
+  padding: 0;  /* options run edge to edge: no white strip around the highlighted one */
   list-style: none;
   background: #fff;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  overflow: hidden;  /* keeps the first and last options inside the rounded corners */
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
   z-index: 60;
   display: none;
@@ -4242,7 +4243,6 @@ a.pin-step-link {
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
-  border-radius: 5px;
   font-family: var(--font-sans);
   font-size: 0.9rem;
   color: var(--color-text);
@@ -4599,28 +4599,73 @@ a.pin-step-link {
   max-width: none;
 }
 
-.upload-preview {
-  text-align: center;
+/* Chosen photos: a grid of square thumbnails, each with a remove (x)
+   button, plus a dashed + tile to add more */
+.upload-previews {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.75rem;
 }
 
-.upload-preview img {
-  max-width: 100%;
-  max-height: 300px;
-  margin: 0 auto 1rem;
+.upload-previews[hidden] {
+  display: none;
+}
+
+.upload-thumb {
+  position: relative;
+  aspect-ratio: 1;
+}
+
+.upload-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;  /* fills the square, trimming the edges if needed */
+  border-radius: 8px;
   display: block;
-  object-fit: contain;
 }
 
-.remove-photo {
-  background: none;
-  border: none;
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-light);
+/* Remove (x): a small round button in the corner, with a bigger invisible
+   tap area so it's easy to hit on a phone */
+.upload-thumb-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  font-size: 1rem;
+  line-height: 1;
   cursor: pointer;
-  text-decoration: underline;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.upload-thumb-remove::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+
+.upload-add {
+  aspect-ratio: 1;
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  background: none;
+  color: var(--color-sage);
+  font-size: 1.8rem;
+  font-weight: 300;
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.upload-add:hover {
+  border-color: var(--color-sage);
+  background: var(--color-sage-light);
 }
 
 .visually-hidden {
@@ -4758,8 +4803,11 @@ a.pin-step-link {
     font-size: 1.05rem;
   }
 
-  /* Search input: larger tap target */
+  /* Search input: larger tap target. Text boxes must be at least 16px on
+     phones: iPhones zoom in on smaller ones when tapped, and stay zoomed
+     (that left the whole form zoomed in after the email step) */
   .form-group input[type="text"],
+  .form-group input[type="email"],
   .form-group textarea {
     font-size: 1rem;
     padding: 0.75rem 0;
@@ -5153,4 +5201,284 @@ a.pin-step-link {
   #travel-map {
     height: 250px;
   }
+}
+
+/* ==========================================================
+   Your RSVP page (rsvp.html?code=...): a summary of what a guest
+   told us, in cards, with a way to change each part
+   ========================================================== */
+.summary-check {
+  display: block;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 1rem;
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.summary-check[hidden] {
+  display: none;
+}
+
+#summary-cards {
+  margin-top: 1.75rem;
+  text-align: left;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  padding: 1.4rem 1.6rem 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summary-card-head h4 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin: 0;
+}
+
+.summary-row,
+.summary-answer {
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summary-row:last-child,
+.summary-answer:last-child {
+  border-bottom: none;
+}
+
+.summary-row p,
+.summary-answer p {
+  margin: 0;
+  max-width: none;
+}
+
+.summary-name {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--color-heading);
+  margin-bottom: 0.15rem !important;
+}
+
+.summary-detail {
+  font-size: 0.92rem;
+  color: var(--color-text);
+}
+
+.summary-note {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+}
+
+.summary-empty {
+  color: #a8a49e;
+}
+
+/* An optional answer: label and answer on the left, actions on the right */
+.summary-answer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.summary-answer-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.summary-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-light);
+  margin-bottom: 0.2rem !important;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+/* Actions: small text links on bigger screens... */
+.summary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-sage);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.summary-action:hover {
+  color: var(--color-sage-hover);
+}
+
+.summary-action-icon {
+  display: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--color-sage-hover);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ...and round icon buttons on phones (easier to tap) */
+@media (max-width: 600px) {
+  .summary-card {
+    padding: 1.2rem 1.1rem 0.3rem;
+  }
+
+  .summary-actions {
+    gap: 0.5rem;
+  }
+
+  .summary-action {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--color-sage-light);
+    text-decoration: none;
+  }
+
+  .summary-action-icon {
+    display: block;
+  }
+
+  .summary-action-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+}
+
+/* Photos: a small gallery (each with a remove x) and a + tile */
+.summary-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 72px);
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.summary-status {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  margin-top: 0.5rem !important;
+}
+
+.summary-status:empty {
+  display: none;
+}
+
+.summary-small {
+  font-size: 0.88rem;
+  color: var(--color-text-light);
+  text-align: center;
+  margin-top: 1.25rem;
+}
+
+/* Editing from the Your RSVP page: a small label above the step, and the
+   song questions show Back instead of Skip */
+.edit-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-sage);
+  text-align: center;
+  margin: 0 auto 0.5rem;
+}
+
+.edit-eyebrow[hidden],
+.edit-only {
+  display: none;
+}
+
+.is-editing .edit-only {
+  display: inline-block;
+}
+
+.is-editing .step-btn--skip {
+  display: none;
+}
+
+/* Search results: "Already RSVPed" tag on the right */
+.search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.search-result-tag {
+  font-size: 0.78rem;
+  font-weight: 300;
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+/* Already RSVPed / Check your email: a line-art envelope */
+.envelope-art {
+  display: block;
+  width: 64px;
+  height: 52px;
+  margin: 0 auto 1rem;
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.envelope-art .envelope-badge {
+  fill: #fff;
+}
+
+#step-already .step-nav [hidden] {
+  display: none;
+}
+
+/* "Back to your RSVP" link in the "Pin added!" message */
+a.pin-undo-btn {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.pin-undo-btn[hidden] {
+  display: none;
 }

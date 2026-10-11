@@ -30,8 +30,7 @@
     email: '',
     partnershipStatus: '',
     stepFlow: ['1', '2', 'email', '3'],  // Default flow; rebuilt after fetching party data
-    photoFile: null,
-    photoBase64: null
+    photos: []  // photos chosen on the photo step: { file, url } (url = preview)
   };
 
   /* ---------- Step Flow ---------- */
@@ -169,7 +168,7 @@
 
   function saveProgress() {
     try {
-      if (!state.selectedGuest || state.currentStep === '1' || state.finished) {
+      if (!state.selectedGuest || state.currentStep === '1' || state.finished || state.fromLink) {
         sessionStorage.removeItem(PROGRESS_KEY);
         return;
       }
@@ -477,16 +476,17 @@
     return guestListPromise;
   }
 
-  // Search the loaded guest list. Same rules as the old Google search:
-  // only adults who haven't RSVPed yet (kids and +1s are RSVPed for by others).
+  // Search the loaded guest list: adults only (kids and +1s are RSVPed for by
+  // others). Guests who already RSVPed are included and tagged, so they can
+  // get a link to their RSVP.
   function searchGuestList(list, query) {
     var q = query.toLowerCase().trim();
     var results = [];
     for (var i = 0; i < list.length; i++) {
       var g = list[i];
-      if (g.relationship === 'child' || g.relationship === 'plusone' || g.hasResponded) continue;
+      if (g.relationship === 'child' || g.relationship === 'plusone') continue;
       if (String(g.displayName).toLowerCase().indexOf(q) !== -1) {
-        results.push({ guestId: g.guestId, partyId: g.partyId, displayName: g.displayName });
+        results.push({ guestId: g.guestId, partyId: g.partyId, displayName: g.displayName, hasResponded: !!g.hasResponded });
       }
     }
     return results;
@@ -540,11 +540,14 @@
     }
     var html = '';
     for (var i = 0; i < guests.length; i++) {
-      html += '<button type="button" class="search-result-item" ' +
+      var done = !!guests[i].hasResponded;
+      html += '<button type="button" class="search-result-item' + (done ? ' search-result-item--done' : '') + '" ' +
         'data-guest-id="' + guests[i].guestId + '" ' +
         'data-party-id="' + guests[i].partyId + '" ' +
-        'data-name="' + guests[i].displayName + '">' +
-        guests[i].displayName + '</button>';
+        'data-name="' + escapeHTML(guests[i].displayName) + '"' +
+        (done ? ' data-responded="true"' : '') + '>' +
+        '<span>' + escapeHTML(guests[i].displayName) + '</span>' +
+        (done ? '<span class="search-result-tag">Already RSVPed</span>' : '') + '</button>';
     }
     container.innerHTML = html;
 
@@ -556,11 +559,17 @@
 
   function onGuestSelected(e) {
     var btn = e.currentTarget;
-    state.selectedGuest = {
+    var guest = {
       guestId: btn.getAttribute('data-guest-id'),
       partyId: btn.getAttribute('data-party-id'),
       displayName: btn.getAttribute('data-name')
     };
+    // Already RSVPed: offer to email them a link to their RSVP
+    if (btn.getAttribute('data-responded') === 'true') {
+      showAlreadyRsvped(guest);
+      return;
+    }
+    state.selectedGuest = guest;
     // Move off the search screen to a separate loading screen while we look
     // up their party (often instant, thanks to the background lookup above).
     showLoadingScreen();
@@ -701,48 +710,462 @@
     }
   }
 
-  /* ---------- Arriving from an email link (rsvp.html?code=...) ---------- */
-  // Each confirmation email has a private link back to the form:
-  //   - If anyone on that RSVP is coming, it opens the optional questions.
-  //   - If everyone said "can't make it", it lets them update their RSVP.
-  function startFromCode(code) {
+  /* ---------- Your RSVP page (rsvp.html?code=...) ---------- */
+  // Every email has a private link to the guest's RSVP. It opens a summary of
+  // what they told us, in three cards: Attendance, Dinner, and Optional
+  // answers. Each can be changed until its deadline:
+  //   - who's coming (yes or no): until May 24, 2027
+  //   - dinner and optional answers: until July 14, 2027
+  // (The script decides whether each deadline has passed; see getRsvpByCode.)
+
+  // Line icons for the summary's action buttons (on phones they show as
+  // round icon buttons; on bigger screens, as small text links)
+  var ACTION_ICONS = {
+    edit: '<path d="M4.5 15.5 L5.5 11.8 L13 4.3 a1.5 1.5 0 0 1 2.1 0 l0.6 0.6 a1.5 1.5 0 0 1 0 2.1 L8.2 14.5 Z M11.8 5.5 L14.5 8.2"/>',
+    remove: '<path d="M4 6 H16 M8 6 V4.2 H12 V6 M5.8 6 L6.6 16 H13.4 L14.2 6 M8.6 9 V13 M11.4 9 V13"/>',
+    move: '<path d="M10 17.5 C10 17.5 4.8 12.4 4.8 8.6 a5.2 5.2 0 0 1 10.4 0 C15.2 12.4 10 17.5 10 17.5 Z"/><circle cx="10" cy="8.6" r="1.9"/>',
+    add: '<path d="M10 4.5 V15.5 M4.5 10 H15.5"/>'
+  };
+
+  function actionButton(action, icon, text, label) {
+    return '<button type="button" class="summary-action" data-action="' + action + '" aria-label="' + escapeHTML(label) + '">' +
+      '<svg class="summary-action-icon" viewBox="0 0 20 20" aria-hidden="true">' + ACTION_ICONS[icon] + '</svg>' +
+      '<span class="summary-action-text">' + text + '</span></button>';
+  }
+
+  // Load an RSVP from its code and show the Your RSVP page.
+  // opts.saved: show the "Changes saved!" version
+  function startFromCode(code, opts) {
+    state.fromLink = true;  // nothing to save in this tab: it's all in the RSVP sheet
+    state.rsvpCode = code;
     document.getElementById('rsvp-progress').style.display = 'none';
     showLoadingScreen('Finding your RSVP&hellip;');
-    fetchJSON(APPS_SCRIPT_URL + '?action=getRsvpByCode&code=' + encodeURIComponent(code))
+    loadSummaryData(code)
+      .then(function () { renderSummary(opts || {}); })
+      .catch(function () {
+        showLoadingError('We couldn&rsquo;t open that RSVP link. You can search for your name instead.');
+      });
+  }
+
+  function loadSummaryData(code) {
+    return fetchJSON(APPS_SCRIPT_URL + '?action=getRsvpByCode&code=' + encodeURIComponent(code), 30000)
       .then(function (data) {
         if (!data.members) throw new Error(data.error || 'Not found');
-
-        var submitter = null, coming = [], onRsvp = [];
+        state.summary = data;
+        var submitter = null;
         for (var i = 0; i < data.members.length; i++) {
-          var m = data.members[i];
-          if (m.guestId === data.submittedBy) submitter = m;
-          if (m.inCode) onRsvp.push(m.guestId);
-          if (m.inCode && m.attending && m.attending !== 'no') coming.push(m.guestId);
+          if (data.members[i].guestId === data.submittedBy) submitter = data.members[i];
         }
         submitter = submitter || data.members[0];
-        state.selectedGuest = {
-          guestId: submitter.guestId,
-          partyId: data.partyId,
-          displayName: submitter.displayName
-        };
+        state.selectedGuest = { guestId: submitter.guestId, partyId: data.partyId, displayName: submitter.displayName };
         state.partnershipStatus = data.partnershipStatus || '';
-        // (Their email was already sent, so finishing here won't send another)
-        state.rsvpCode = code;
+        setSpecialSongHeading();
+        return data;
+      });
+  }
 
-        if (coming.length > 0) {
-          // Coming: go straight to the optional questions
-          state.extrasGuestIds = coming;
-          setSpecialSongHeading();
-          startExtras();
-          fetchAttendees();
+  // The people on this RSVP, and which of them are coming
+  function summaryMembers() {
+    return state.summary.members.filter(function (m) { return m.inCode; });
+  }
+  function summaryComing() {
+    return summaryMembers().filter(function (m) { return m.attending && m.attending !== 'no'; });
+  }
+
+  function attendingText(value) {
+    if (value === 'wedding-and-rehearsal') return 'Wedding & rehearsal dinner';
+    if (value === 'wedding-only') return 'Wedding only';
+    if (value === 'yes') return 'Attending';
+    return 'Can’t make it';
+  }
+
+  function renderSummary(opts) {
+    var d = state.summary;
+    var members = summaryMembers();
+    var coming = summaryComing();
+    var anyoneComing = coming.length > 0;
+    var partnered = state.partnershipStatus === 'married' || state.partnershipStatus === 'partner';
+
+    // Heading and subheader
+    document.getElementById('summary-check').hidden = !opts.saved;
+    document.getElementById('summary-heading').textContent = opts.saved ? 'Changes saved!' : 'Your RSVP';
+    var sub, small = 'Questions? Reply to your confirmation email and we’ll help.';
+    if (opts.saved) {
+      sub = 'We’ve emailed you an updated copy of your RSVP.';
+    } else if (!d.editsOpen || (!anyoneComing && !d.attendanceOpen)) {
+      sub = 'RSVP changes closed on ' + (anyoneComing ? 'July 14' : 'May 24') + '. If something has changed, reply to your confirmation email and we’ll sort it out.';
+      small = 'See you in July!';
+    } else if (!d.attendanceOpen) {
+      sub = 'Changes to who’s coming closed on May 24. You can still update dinner choices and your other answers until July 14, 2027.';
+      small = 'Plans changed? Reply to your confirmation email and we’ll help.';
+    } else if (anyoneComing) {
+      sub = 'Here’s what we have for your party. You can change who’s coming until May 24, 2027, and everything else until July 14, 2027.';
+    } else {
+      sub = 'Here’s what we have for your party. You can change your RSVP until May 24, 2027.';
+    }
+    document.getElementById('summary-subheader').textContent = sub;
+    document.getElementById('summary-small').textContent = small;
+
+    var html = '';
+
+    // Attendance
+    html += '<section class="summary-card"><div class="summary-card-head"><h4>Attendance</h4>' +
+      (d.attendanceOpen ? actionButton('edit-attendance', 'edit', 'Edit', 'Edit attendance') : '') + '</div>';
+    members.forEach(function (m) {
+      html += '<div class="summary-row"><p class="summary-name">' + escapeHTML(m.displayName) + '</p>' +
+        '<p class="summary-detail">' + escapeHTML(attendingText(m.attending)) + '</p></div>';
+    });
+    html += '</section>';
+
+    if (anyoneComing) {
+      // Dinner
+      html += '<section class="summary-card"><div class="summary-card-head"><h4>Dinner</h4>' +
+        (d.editsOpen ? actionButton('edit-dinner', 'edit', 'Edit', 'Edit dinner choices') : '') + '</div>';
+      coming.forEach(function (m) {
+        html += '<div class="summary-row"><p class="summary-name">' + escapeHTML(m.displayName) + '</p>' +
+          '<p class="summary-detail">' + escapeHTML(m.mealChoice || 'Not chosen yet') + '</p>' +
+          (m.dietaryRestrictions ? '<p class="summary-note">Dietary: ' + escapeHTML(m.dietaryRestrictions) + '</p>' : '') +
+          '</div>';
+      });
+      html += '</section>';
+
+      // Optional answers: each has its own actions
+      html += '<section class="summary-card"><div class="summary-card-head"><h4>Optional answers</h4></div>';
+      html += answerRow('Song requests', d.songRequest, d.editsOpen ? (d.songRequest
+        ? actionButton('edit-songs', 'edit', 'Edit', 'Edit song requests')
+        : actionButton('edit-songs', 'add', 'Add', 'Add song requests')) : '');
+      if (partnered) {
+        html += answerRow('Special song', d.specialSong, d.editsOpen ? (d.specialSong
+          ? actionButton('edit-special', 'edit', 'Edit', 'Edit your special song')
+          : actionButton('edit-special', 'add', 'Add', 'Add your special song')) : '');
+      }
+      // Photos: a small gallery. Each has an x to remove it; + adds more.
+      var photos = d.photos || [];
+      var gallery = '<div class="summary-photos" id="summary-photos">';
+      photos.forEach(function (ph, i) {
+        gallery += '<div class="upload-thumb"><img src="' + escapeHTML(ph.url) + '" alt="Your photo ' + (i + 1) + '" loading="lazy">' +
+          (d.editsOpen ? '<button type="button" class="upload-thumb-remove" data-action="remove-photo" data-id="' + escapeHTML(ph.id) + '" aria-label="Remove photo ' + (i + 1) + '">&times;</button>' : '') +
+          '</div>';
+      });
+      if (d.editsOpen) gallery += '<button type="button" class="upload-add" data-action="add-photo" aria-label="Add photos">+</button>';
+      gallery += '</div><p class="summary-status" id="summary-photo-status" role="status"></p>';
+      if (!photos.length && !d.editsOpen) gallery = '<p class="summary-detail summary-empty">None</p>';
+      html += '<div class="summary-answer summary-answer--stacked"><div class="summary-answer-text">' +
+        '<p class="summary-label">Photos</p>' + gallery + '</div></div>';
+      // Map pin
+      var pinActions = '';
+      if (d.editsOpen) {
+        pinActions = d.pin
+          ? actionButton('move-pin', 'move', 'Move', 'Move your map pin') + actionButton('remove-pin', 'remove', 'Remove', 'Remove your map pin')
+          : actionButton('move-pin', 'add', 'Add', 'Add your map pin');
+      }
+      html += answerRow('Map pin', d.pin ? (d.pin.city || 'Added') : '', pinActions, 'Not added yet');
+      html += '</section>';
+    }
+
+    document.getElementById('summary-cards').innerHTML = html;
+    state.edit = null;
+    showScreen('step-summary');
+  }
+
+  function answerRow(label, value, actions, emptyText) {
+    return '<div class="summary-answer"><div class="summary-answer-text">' +
+      '<p class="summary-label">' + escapeHTML(label) + '</p>' +
+      '<p class="summary-detail' + (value ? '' : ' summary-empty') + '">' + escapeHTML(value || emptyText || 'Not answered yet') + '</p>' +
+      '</div>' + (actions ? '<div class="summary-actions">' + actions + '</div>' : '') + '</div>';
+  }
+
+  // Show one screen that isn't part of a step flow
+  function showScreen(id) {
+    hideAllSteps();
+    var el = document.getElementById(id);
+    el.style.display = '';
+    el.classList.add('active');
+    document.getElementById('rsvp-progress').style.display = 'none';
+    document.getElementById('edit-eyebrow').hidden = true;
+    document.getElementById('rsvp-form-container').classList.remove('is-editing');
+    setIntroVisible(false);
+    document.getElementById('rsvp-form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // The summary's buttons
+  function onSummaryClick(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    if (action === 'edit-attendance') startEdit('attendance');
+    else if (action === 'edit-dinner') startEdit('dinner');
+    else if (action === 'edit-songs') startEdit('songs');
+    else if (action === 'edit-special') startEdit('special');
+    else if (action === 'add-photo') document.getElementById('summary-photo-input').click();
+    else if (action === 'remove-photo') removeSummaryPhoto(btn.getAttribute('data-id'));
+    else if (action === 'move-pin') goToMap();
+    else if (action === 'remove-pin') removeSummaryPin();
+  }
+
+  // Reload the RSVP from the sheet, then redraw the summary
+  function refreshSummary(opts) {
+    return loadSummaryData(state.rsvpCode).then(function () { renderSummary(opts || {}); });
+  }
+
+  // Photos added on the Your RSVP page upload right away, one at a time
+  function uploadSummaryPhotos(fileList) {
+    var files = [], skipped = [];
+    for (var i = 0; i < fileList.length; i++) {
+      var f = fileList[i];
+      if (f.size > MAX_PHOTO_SIZE || !f.type.match(/^image\/(jpeg|png|webp)$/)) skipped.push(f.name);
+      else files.push(f);
+    }
+    if (skipped.length) {
+      showModal('Some photos weren’t added',
+        'Photos need to be a JPG, PNG, or WebP under 10 MB. These weren’t added: ' + skipped.join(', '));
+    }
+    if (!files.length) return;
+    var status = document.getElementById('summary-photo-status');
+    var done = 0, failed = 0;
+    function next() {
+      if (done + failed === files.length) {
+        status.textContent = '';
+        if (failed) showModal('Some photos didn’t upload', (files.length - failed) + ' of ' + files.length + ' uploaded. Please try the rest again.');
+        refreshSummary().catch(function () {});
+        return;
+      }
+      status.textContent = files.length > 1 ? 'Uploading ' + (done + failed + 1) + ' of ' + files.length + '…' : 'Uploading…';
+      uploadPhoto(files[done + failed])
+        .then(function () { done++; }, function () { failed++; })
+        .then(next);
+    }
+    next();
+  }
+
+  function removeSummaryPhoto(fileId) {
+    var status = document.getElementById('summary-photo-status');
+    if (status) status.textContent = 'Removing…';
+    postToScript({ action: 'removePhoto', code: state.rsvpCode, fileId: fileId })
+      .then(function () { return refreshSummary(); })
+      .catch(function () {
+        if (status) status.textContent = '';
+        showModal('Something went wrong', 'We couldn’t remove that photo. Please try again.');
+      });
+  }
+
+  // Add or move their pin: open the map (their pin is labeled with their name)
+  function goToMap() {
+    try { sessionStorage.setItem('rsvpPinName', state.selectedGuest.displayName); } catch (e) {}
+    window.location.href = 'travel.html?addpin=true&code=' + encodeURIComponent(state.rsvpCode);
+  }
+
+  function removeSummaryPin() {
+    fetchJSON(APPS_SCRIPT_URL + '?action=removePin&code=' + encodeURIComponent(state.rsvpCode))
+      .then(function () { return refreshSummary(); })
+      .catch(function () {
+        showModal('Something went wrong', 'We couldn’t remove your pin. Please try again.');
+      });
+  }
+
+  /* ---------- Changing an RSVP (from the Your RSVP page) ---------- */
+  // Each card's Edit opens the same form steps guests already know, with
+  // their answers filled in. The last step's button says "Save changes", and
+  // saving goes straight back to the summary.
+  //   attendance: "Can you make it?" (+ the +1's name, and dinner for anyone
+  //               who wasn't coming before, if needed)
+  //   dinner:     the dinner step
+  //   songs / special: that song question
+
+  function startEdit(mode) {
+    var d = state.summary;
+    state.edit = { mode: mode, history: [] };
+    state.partyMembers = summaryMembers().map(function (m) {
+      var isPlusOne = m.relationship === 'plusone';
+      return {
+        guestId: m.guestId,
+        displayName: m.displayName,
+        relationship: m.relationship,
+        rehearsalDinner: !!m.rehearsalDinner,
+        attending: m.attending || 'no',
+        wasAttending: m.attending || 'no',
+        hasResponded: false,
+        includedToday: true,
+        plusOneName: isPlusOne && m.displayName && m.displayName !== 'Guest' ? m.displayName : ''
+      };
+    });
+    state.mealChoices = {};
+    state.dietaryRestrictions = {};
+    summaryMembers().forEach(function (m) {
+      state.mealChoices[m.guestId] = m.mealChoice || '';
+      state.dietaryRestrictions[m.guestId] = m.dietaryRestrictions || '';
+    });
+    document.getElementById('meal-selections').innerHTML = '';  // start fresh from the saved answers
+    document.getElementById('song-request').value = d.songRequest || '';
+    document.getElementById('special-song-input').value = d.specialSong || '';
+
+    document.getElementById('edit-eyebrow').hidden = false;
+    document.getElementById('rsvp-form-container').classList.add('is-editing');
+    if (mode === 'attendance') { renderPartyMembers(); showEditStep('2'); }
+    if (mode === 'dinner') { renderMealSelections(); showEditStep('3'); }
+    if (mode === 'songs') showEditStep('songs');
+    if (mode === 'special') showEditStep('special-song');
+  }
+
+  function showEditStep(stepId) {
+    hideAllSteps();
+    var el = document.getElementById('step-' + stepId);
+    el.style.display = '';
+    el.classList.add('active');
+    state.currentStep = stepId;
+    document.getElementById('rsvp-progress').style.display = 'none';
+    setIntroVisible(false);
+    updateEditButtons();
+    document.getElementById('rsvp-form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // After the attendance step: is a +1 name or a dinner choice still needed?
+  function editNeedsPlusOneName() {
+    return getTodayPlusOnes().some(function (m) {
+      return m.attending !== 'no' && (!m.plusOneName || m.plusOneName.split(' ').length < 2);
+    });
+  }
+  function editNeedsDinner() {
+    return getSelectedMembers().some(function (m) { return !state.mealChoices[m.guestId]; });
+  }
+
+  // The main button says "Save changes" on the last step, "Continue" before it
+  function updateEditButtons() {
+    if (!state.edit) return;
+    var step = state.currentStep;
+    var last = true;
+    if (step === '2') last = !editNeedsPlusOneName() && !editNeedsDinner();
+    if (step === 'plusone') last = !editNeedsDinner();
+    var btn = document.querySelector('#step-' + step + ' .step-btn[data-dir="next"], #step-' + step + ' #submit-rsvp');
+    if (btn) btn.textContent = last ? 'Save changes' : 'Continue';
+  }
+
+  // Continue / Save changes while editing
+  function editNext() {
+    var step = state.currentStep;
+    if (!validateCurrentStep()) return;
+    if (step === '2' && editNeedsPlusOneName()) {
+      state.edit.history.push(step);
+      renderPlusOneFields();
+      showEditStep('plusone');
+      return;
+    }
+    if ((step === '2' || step === 'plusone') && editNeedsDinner()) {
+      state.edit.history.push(step);
+      state.edit.usedDinner = true;
+      renderMealSelections();
+      showEditStep('3');
+      return;
+    }
+    saveEdit();
+  }
+
+  // Back while editing: the step before, or the summary
+  function editBack() {
+    var prev = state.edit.history.pop();
+    if (prev) {
+      if (prev === '2') renderPartyMembers();
+      showEditStep(prev);
+    } else {
+      renderSummary({});
+    }
+  }
+
+  function saveEdit() {
+    var mode = state.edit.mode;
+    var payload = { action: 'updateRsvp', code: state.rsvpCode };
+    if (mode === 'songs') payload.songRequest = document.getElementById('song-request').value.trim();
+    if (mode === 'special') payload.specialSong = document.getElementById('special-song-input').value.trim();
+    if (mode === 'attendance' || mode === 'dinner') {
+      if (mode === 'dinner' || state.edit.usedDinner) collectMealData();
+      payload.guests = state.partyMembers.map(function (m) {
+        var g = { guestId: m.guestId };
+        if (mode === 'attendance') {
+          g.attending = m.attending;
+          if (m.relationship === 'plusone' && m.plusOneName) g.guestName = m.plusOneName;
+        }
+        if (m.attending !== 'no' && (mode === 'dinner' || state.edit.usedDinner)) {
+          g.mealChoice = state.mealChoices[m.guestId] || '';
+          g.dietaryRestrictions = state.dietaryRestrictions[m.guestId] || '';
+        }
+        return g;
+      });
+    }
+    var everyoneOut = mode === 'attendance' && state.partyMembers.every(function (m) { return m.attending === 'no'; }) &&
+      state.partyMembers.some(function (m) { return m.wasAttending !== 'no'; });
+
+    showPageLoader('Saving your changes&hellip;');
+    // Saving the same changes twice is harmless, so backup copies are fine
+    fetchJSON(APPS_SCRIPT_URL, 30000, 8000, JSON.stringify(payload))
+      .then(function () { return loadSummaryData(state.rsvpCode); })
+      .then(function () {
+        hidePageLoader();
+        if (everyoneOut) {
+          // Everyone switched to "can't make it": the "We'll miss you" screen
+          document.getElementById('decline-art').innerHTML = vineLoaderSVG('confirm-art confirm-art--vine');
+          document.getElementById('decline-text').textContent = 'Thanks for letting us know. We’ve updated your RSVP, and we’ll find another time to see each other!';
+          document.getElementById('decline-small').textContent = 'If your plans change again, you can update your RSVP from your email until May 24, 2027.';
+          state.edit = null;
+          showScreen('step-decline');
         } else {
-          // Not coming (yet): let them update their RSVP
-          document.getElementById('rsvp-progress').style.display = '';
-          setUpParty(data, submitter.guestId, onRsvp);
+          renderSummary({ saved: true });
         }
       })
       .catch(function () {
-        showLoadingError('We couldn&rsquo;t open that RSVP link. You can search for your name instead.');
+        hidePageLoader();
+        showModal('We couldn’t save your changes', 'Please check your connection and try again. (If they already went through, they won’t be saved twice.)');
+      });
+  }
+
+  /* ---------- Already RSVPed (picked their name in the search) ---------- */
+  // We don't show anything about their RSVP here. Instead we email a private
+  // link to the address used for their RSVP (partly hidden on screen, so they
+  // know which inbox to check).
+
+  function showAlreadyRsvped(guest) {
+    state.alreadyGuest = guest;
+    var text = document.getElementById('already-text');
+    var buttons = document.getElementById('already-buttons');
+    var sendBtn = document.getElementById('already-send');
+    text.textContent = 'Want to see your RSVP or make changes? We’ll email a private link to the address used for your RSVP.';
+    sendBtn.hidden = false;
+    sendBtn.disabled = false;
+    buttons.hidden = false;
+    showScreen('step-already');
+    fetchJSON(APPS_SCRIPT_URL + '?action=rsvpLinkHint&guestId=' + encodeURIComponent(guest.guestId))
+      .then(function (data) {
+        if (state.alreadyGuest !== guest) return;
+        if (data.masked) {
+          state.alreadyMasked = data.masked;
+          text.textContent = 'Want to see your RSVP or make changes? We’ll email a private link to the address used for your RSVP: ' + data.masked;
+        } else {
+          text.textContent = 'We don’t have an email address for your RSVP, so we can’t send you a link. Write to us and we’ll help.';
+          sendBtn.hidden = true;
+        }
+      })
+      .catch(function () {});
+  }
+
+  function sendRsvpLink(isResend) {
+    var guest = state.alreadyGuest;
+    if (!guest) return;
+    var btn = document.getElementById(isResend ? 'link-resend' : 'already-send');
+    btn.disabled = true;
+    postToScript({ action: 'sendRsvpLink', guestId: guest.guestId })
+      .then(function () {
+        document.getElementById('link-sent-text').textContent = 'We sent a link to ' + (state.alreadyMasked || 'your email') +
+          '. It can take a few minutes to arrive, so check your spam folder too.';
+        if (isResend) {
+          btn.textContent = 'Sent again';
+          setTimeout(function () { btn.textContent = 'Send it again'; btn.disabled = false; }, 4000);
+        } else {
+          btn.disabled = false;
+          showScreen('step-link-sent');
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        showModal('Something went wrong', 'We couldn’t send the link. Please check your connection and try again.');
       });
   }
 
@@ -1028,6 +1451,7 @@
         this.setAttribute('aria-selected', 'true');
         dd.classList.remove('open');
         trigger.setAttribute('aria-expanded', 'false');
+        updateEditButtons();  // "Continue" or "Save changes", while editing
       });
     }
   }
@@ -1124,6 +1548,9 @@
   }
 
   /* ---------- Step 4: Photo Upload ---------- */
+  // Guests can choose several photos (from the picker, or dragged onto the
+  // box on a computer). They show as thumbnails; each can be removed, and the
+  // + tile adds more. Nothing uploads until they tap Continue.
   function initPhotoUpload() {
     var dropzone = document.getElementById('upload-dropzone');
     var fileInput = document.getElementById('photo-input');
@@ -1145,45 +1572,78 @@
     dropzone.addEventListener('drop', function (e) {
       e.preventDefault();
       dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        handlePhotoFile(e.dataTransfer.files[0]);
-      }
+      addPhotoFiles(e.dataTransfer.files);
     });
 
     fileInput.addEventListener('change', function () {
-      if (this.files.length > 0) {
-        handlePhotoFile(this.files[0]);
-      }
+      addPhotoFiles(this.files);
+      this.value = '';  // so picking the same photo again still works
     });
 
-    document.getElementById('remove-photo').addEventListener('click', function () {
-      state.photoFile = null;
-      state.photoBase64 = null;
-      document.getElementById('upload-preview').style.display = 'none';
-      document.getElementById('upload-dropzone').style.display = '';
+    // Remove (x) and add more (+), on the thumbnails
+    document.getElementById('upload-previews').addEventListener('click', function (e) {
+      var removeBtn = e.target.closest('.upload-thumb-remove');
+      if (removeBtn) {
+        removePhoto(Number(removeBtn.getAttribute('data-index')));
+        return;
+      }
+      if (e.target.closest('.upload-add')) fileInput.click();
     });
   }
 
-  function handlePhotoFile(file) {
-    if (file.size > MAX_PHOTO_SIZE) {
-      showModal('Photo too large', 'Please choose a photo under 10 MB.');
+  // Add chosen files to the list. Files that are too big or not a photo are
+  // left out, with one message naming them.
+  function addPhotoFiles(fileList) {
+    var skipped = [];
+    for (var i = 0; i < fileList.length; i++) {
+      var file = fileList[i];
+      if (file.size > MAX_PHOTO_SIZE || !file.type.match(/^image\/(jpeg|png|webp)$/)) {
+        skipped.push(file.name);
+        continue;
+      }
+      // A quick preview link for the thumbnail (no need to read the whole file yet)
+      state.photos.push({ file: file, url: URL.createObjectURL(file) });
+    }
+    renderPhotoPreviews();
+    if (skipped.length) {
+      showModal('Some photos weren\u2019t added',
+        'Photos need to be a JPG, PNG, or WebP under 10 MB. These weren\u2019t added: ' + escapeHTML(skipped.join(', ')));
+    }
+  }
+
+  function removePhoto(index) {
+    var photo = state.photos[index];
+    if (!photo) return;
+    URL.revokeObjectURL(photo.url);  // frees the preview's memory
+    state.photos.splice(index, 1);
+    renderPhotoPreviews();
+  }
+
+  function clearPhotos() {
+    while (state.photos.length) removePhoto(0);
+  }
+
+  // Show the chosen photos as thumbnails (or the browse box if there are none)
+  function renderPhotoPreviews() {
+    var previews = document.getElementById('upload-previews');
+    var dropzone = document.getElementById('upload-dropzone');
+    if (!state.photos.length) {
+      previews.hidden = true;
+      previews.innerHTML = '';
+      dropzone.style.display = '';
       return;
     }
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
-      showModal('Unsupported format', 'Please upload a JPG, PNG, or WebP image.');
-      return;
+    var html = '';
+    for (var i = 0; i < state.photos.length; i++) {
+      html += '<div class="upload-thumb">' +
+        '<img src="' + state.photos[i].url + '" alt="">' +
+        '<button type="button" class="upload-thumb-remove" data-index="' + i + '" aria-label="Remove photo ' + (i + 1) + '">&times;</button>' +
+        '</div>';
     }
-
-    state.photoFile = file;
-
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      document.getElementById('preview-img').src = e.target.result;
-      document.getElementById('upload-preview').style.display = '';
-      document.getElementById('upload-dropzone').style.display = 'none';
-      state.photoBase64 = e.target.result.split(',')[1];
-    };
-    reader.readAsDataURL(file);
+    html += '<button type="button" class="upload-add" aria-label="Add more photos">+</button>';
+    previews.innerHTML = html;
+    previews.hidden = false;
+    dropzone.style.display = 'none';
   }
 
   /* ---------- Submission ---------- */
@@ -1351,13 +1811,28 @@
     }).join('');
   }
 
-  function uploadPhoto() {
-    return postToScript({
-      action: 'uploadPhoto',
-      partyId: state.selectedGuest.partyId,
-      fileName: state.photoFile.name,
-      mimeType: state.photoFile.type,
-      base64Data: state.photoBase64
+  // Uploads one photo. The file is read just before sending, so a phone
+  // doesn't have to hold every chosen photo in memory at once.
+  function uploadPhoto(file) {
+    return readAsBase64(file).then(function (base64) {
+      return postToScript({
+        action: 'uploadPhoto',
+        partyId: state.selectedGuest.partyId,
+        code: state.rsvpCode || '',  // links the photo to their RSVP
+        fileName: file.name,
+        mimeType: file.type,
+        base64Data: base64
+      });
+    });
+  }
+
+  // The file's contents as base64 text (the format the script expects)
+  function readAsBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function (e) { resolve(e.target.result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   }
 
@@ -1405,27 +1880,49 @@
     }
   }
 
-  // "Continue" on the photo step: upload the photo if one was chosen, then
-  // move on to the last step (the guest map pin)
+  // "Continue" on the photo step: upload the chosen photos one at a time
+  // (showing progress), then move on to the last step (the guest map pin).
+  // Photos that upload are taken off the list right away, so if some fail,
+  // trying again only resends the ones that didn't make it.
   function continueFromPhoto() {
     var btn = document.getElementById('photo-continue');
-    if (!state.photoBase64) {
+    if (!state.photos.length) {
       nextExtrasStep();
       return;
     }
+    var total = state.photos.length;
+    var done = 0;
+    var failed = [];
     btn.disabled = true;
-    btn.textContent = 'Uploading...';
-    uploadPhoto()
-      .then(function () {
+
+    function next() {
+      if (!state.photos.length) {
         btn.disabled = false;
         btn.textContent = 'Continue';
-        nextExtrasStep();
-      })
-      .catch(function () {
-        btn.disabled = false;
-        btn.textContent = 'Continue';
-        showModal('Something went wrong', 'We couldn’t upload your photo. Please try again, or skip this step.');
-      });
+        // Put any that failed back on the list (and on screen) to try again
+        state.photos = failed;
+        renderPhotoPreviews();
+        if (failed.length) {
+          showModal('Some photos didn\u2019t upload',
+            (total - failed.length) + ' of ' + total + ' uploaded. Tap Continue to try the rest again, or skip this step.');
+        } else {
+          nextExtrasStep();
+        }
+        return;
+      }
+      var photo = state.photos.shift();
+      btn.textContent = total > 1 ? 'Uploading ' + (done + failed.length + 1) + ' of ' + total + '\u2026' : 'Uploading\u2026';
+      uploadPhoto(photo.file)
+        .then(function () {
+          done++;
+          URL.revokeObjectURL(photo.url);
+        })
+        .catch(function () {
+          failed.push(photo);
+        })
+        .then(next);
+    }
+    next();
   }
 
   // Ask the script to send this RSVP's confirmation email. finished = whether
@@ -1681,6 +2178,7 @@
     var backBtns = document.querySelectorAll('.step-btn[data-dir="prev"]');
     for (var i = 0; i < backBtns.length; i++) {
       backBtns[i].addEventListener('click', function () {
+        if (state.edit) { editBack(); return; }
         var prev = getPrevStep();
         if (prev) goToStep(prev);
       });
@@ -1689,6 +2187,9 @@
     var nextBtns = document.querySelectorAll('.step-btn[data-dir="next"]');
     for (var j = 0; j < nextBtns.length; j++) {
       nextBtns[j].addEventListener('click', function () {
+        // Changing an RSVP from the Your RSVP page
+        if (state.edit) { editNext(); return; }
+
         // Part 2 steps: save what they've shared so far, then move on
         if (state.currentStep === 'special-song' || state.currentStep === 'songs') {
           saveExtras();
@@ -1740,7 +2241,7 @@
         var fields = step.querySelectorAll('input[type="text"], textarea');
         for (var f = 0; f < fields.length; f++) fields[f].value = '';
         if (step.id === 'step-photo') {
-          document.getElementById('remove-photo').click(); // drop any chosen photo
+          clearPhotos(); // drop any chosen photos
         }
         nextExtrasStep();
       });
@@ -1748,9 +2249,32 @@
 
     // Part 1's Submit button, on the dinner step
     document.getElementById('submit-rsvp').addEventListener('click', function () {
+      if (state.edit) { editNext(); return; }  // "Save changes" while editing
       if (!validateCurrentStep()) return; // e.g. a meal not chosen yet
       submitRsvp();
     });
+
+    // Back buttons that only show while editing (on the song questions)
+    var editBackBtns = document.querySelectorAll('[data-edit-back]');
+    for (var eb = 0; eb < editBackBtns.length; eb++) {
+      editBackBtns[eb].addEventListener('click', function () { if (state.edit) editBack(); });
+    }
+
+    // Your RSVP page
+    document.getElementById('summary-cards').addEventListener('click', onSummaryClick);
+    document.getElementById('summary-photo-input').addEventListener('change', function () {
+      uploadSummaryPhotos(this.files);
+      this.value = '';
+    });
+
+    // Already RSVPed screens
+    document.getElementById('already-back').addEventListener('click', function () {
+      state.alreadyGuest = null;
+      document.getElementById('rsvp-progress').style.display = '';
+      goToStep('1');
+    });
+    document.getElementById('already-send').addEventListener('click', function () { sendRsvpLink(false); });
+    document.getElementById('link-resend').addEventListener('click', function () { sendRsvpLink(true); });
 
     // The invitation into part 2, on the confirmation screen
     document.getElementById('extras-start').addEventListener('click', startExtras);
@@ -1768,6 +2292,8 @@
       try {
         if (state.selectedGuest) sessionStorage.setItem('rsvpPinName', state.selectedGuest.displayName);
       } catch (e) {}  // if the browser blocks storage, the map just asks for the name
+      // The RSVP's code links the pin to it (so they can move or remove it later)
+      if (state.rsvpCode) this.href = 'travel.html?addpin=true&code=' + encodeURIComponent(state.rsvpCode);
       sendConfirmationEmail(true);
     });
 

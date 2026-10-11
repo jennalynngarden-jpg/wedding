@@ -9,7 +9,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Configuration ---------- */
   // Replace this URL with your deployed Google Apps Script URL for guest pins
-  var GUEST_PINS_URL = 'https://script.google.com/macros/s/AKfycbwcPHnrg7AyTR5IzPS68qymBvdGhGmjhLH5Ya6qERwNAXL9fleY4Y-0EVhw5b1mKF2cbg/exec';
+  // Guest pins are saved by the main RSVP script (so a pin can be linked to
+  // the RSVP that added it, and only that guest can move or remove it)
+  var GUEST_PINS_URL = 'https://script.google.com/macros/s/AKfycbxMldY7OfwgI-AaEhLRxgqVW_Du_Z9YdANivvVzGfA7MkVMFaA_MkPbyMPYcqSW2SszOQ/exec';
+
+  // Arriving from an RSVP (travel.html?addpin=true&code=...): the pin is
+  // linked to that RSVP. Adding it again replaces their old pin (that's "Move").
+  var pinCodeMatch = window.location.search.match(/[?&]code=([a-f0-9]{16,64})/);
+  var PIN_RSVP_CODE = pinCodeMatch ? pinCodeMatch[1] : '';
 
   /* ---------- Location data ----------
      Each entry has a name, category, coordinates, address, and drive time
@@ -159,13 +166,18 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* Build popup content for guest pins */
-  function guestPopupContent(name, city, pinId) {
+  // (No Remove button here: guests remove their own pin from their Your
+  // RSVP page, so nobody can delete someone else's.)
+  function guestPopupContent(name, city) {
     var tagline = city ? 'Traveling from ' + city : 'Traveling from here!';
     return '<div class="guest-popup">' +
-           '<strong>' + name + '</strong>' +
-           '<span class="guest-tagline">' + tagline + '</span>' +
-           '<button class="guest-remove-btn" data-pin-id="' + pinId + '">Remove pin</button>' +
+           '<strong>' + escapeText(name) + '</strong>' +
+           '<span class="guest-tagline">' + escapeText(tagline) + '</span>' +
            '</div>';
+  }
+
+  function escapeText(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   /* Look up city name from coordinates using OpenStreetMap's Nominatim */
@@ -384,47 +396,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Add a guest marker to the map ---------- */
   function addGuestMarker(name, lat, lng, pinId, city) {
+    if (guestMarkers[pinId]) return guestMarkers[pinId];  // already on the map
     var marker = L.marker([lat, lng], { icon: createIcon('guest') });
     // Name shows on hover (tooltip); click opens the full popup with city + remove
     marker.bindTooltip(name, { direction: 'top', offset: [0, -6] });
-    marker.bindPopup(guestPopupContent(name, city, pinId), { offset: [0, -6] });
+    marker.bindPopup(guestPopupContent(name, city), { offset: [0, -6] });
     marker.pinId = pinId;
     marker.city = city;
     marker.guestName = name;
     layerGroups.guest.addLayer(marker);
     guestMarkers[pinId] = marker;
-
-    // Handle remove button click when popup opens
-    marker.on('popupopen', function () {
-      var removeBtn = document.querySelector('.guest-remove-btn[data-pin-id="' + pinId + '"]');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', function () {
-          removeGuestPin(pinId);
-        });
-      }
-    });
-
     return marker;
   }
 
-  /* ---------- Remove a guest pin ---------- */
-  function removeGuestPin(pinId) {
-    var marker = guestMarkers[pinId];
-    if (marker) {
-      map.closePopup();
-      layerGroups.guest.removeLayer(marker);
-      delete guestMarkers[pinId];
-
-      // Delete from backend
-      deletePin(pinId, function (err) {
-        if (err) {
-          console.error('Failed to delete pin:', err);
-        }
-      });
-    }
-  }
-
   /* ---------- Save pin to backend ---------- */
+  // callback(err, pinId, removeKey): removeKey lets this browser undo it
   function savePin(name, lat, lng, city, callback) {
     if (GUEST_PINS_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
       // If not configured, simulate success for testing
@@ -434,17 +420,21 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Use GET with query params to avoid CORS issues with Google Apps Script
+    // Our own pin ID, so if the request is sent twice, it's only saved once
+    var newPinId = 'pin_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
     var url = GUEST_PINS_URL + '?action=addPin' +
       '&name=' + encodeURIComponent(name) +
       '&lat=' + encodeURIComponent(lat) +
       '&lng=' + encodeURIComponent(lng) +
-      '&city=' + encodeURIComponent(city || '');
+      '&city=' + encodeURIComponent(city || '') +
+      '&pinId=' + encodeURIComponent(newPinId) +
+      (PIN_RSVP_CODE ? '&code=' + PIN_RSVP_CODE : '');
 
     fetch(url)
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (data.success) {
-          callback(null, data.pinId);
+          callback(null, data.pinId, data.removeKey);
         } else {
           callback(data.error || 'Unknown error');
         }
@@ -455,14 +445,16 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* ---------- Remove pin from backend ---------- */
-  function deletePin(pinId, callback) {
+  // Undo: only works with the private key this browser got when adding it
+  function deletePin(pinId, key, callback) {
     if (GUEST_PINS_URL === 'YOUR_DEPLOYED_APPS_SCRIPT_URL_HERE') {
       callback(null);
       return;
     }
 
     // Use GET with query params to avoid CORS issues with Google Apps Script
-    var url = GUEST_PINS_URL + '?action=removePin&pinId=' + encodeURIComponent(pinId);
+    var url = GUEST_PINS_URL + '?action=removePin&pinId=' + encodeURIComponent(pinId) +
+      '&key=' + encodeURIComponent(key || '');
 
     fetch(url)
       .then(function (res) { return res.json(); })
@@ -705,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function () {
       pinConfirmOkBtn.textContent = 'Saving…';
 
       getCityFromCoords(lat, lng, function (city) {
-        savePin(name, lat, lng, city, function (err, pinId) {
+        savePin(name, lat, lng, city, function (err, pinId, removeKey) {
           pinConfirmOkBtn.disabled = false;
           pinConfirmOkBtn.textContent = 'Confirm pin';
           if (err) {
@@ -714,8 +706,14 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           pendingPinName = '';
           exitPlacingMode();  // hides pin/bar, exits full-screen
+          // Moving their pin: the old one is gone, so redraw everyone's pins
+          if (PIN_RSVP_CODE) {
+            layerGroups.guest.clearLayers();
+            guestMarkers = {};
+            loadGuestPins();
+          }
           var marker = addGuestMarker(name, lat, lng, pinId, city);
-          lastAddedPin = { pinId: pinId, marker: marker };
+          lastAddedPin = { pinId: pinId, marker: marker, key: removeKey };
           showToast();
         });
       });
@@ -994,6 +992,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ---------- Toast / Undo ---------- */
   function showToast() {
+    // Came from their Your RSVP page: offer a way back
+    var backLink = document.getElementById('pin-back-rsvp');
+    if (backLink && PIN_RSVP_CODE) {
+      backLink.href = 'rsvp.html?code=' + PIN_RSVP_CODE;
+      backLink.hidden = false;
+    }
     if (pinToast) {
       pinToast.classList.add('active');
 
@@ -1031,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       // Delete from backend
-      deletePin(pinId, function (err) {
+      deletePin(pinId, lastAddedPin.key, function (err) {
         if (err) {
           console.error('Failed to delete pin from backend:', err);
         }

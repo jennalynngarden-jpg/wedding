@@ -1,5 +1,12 @@
 /* ============================================
    Guest Pins - Google Apps Script Backend
+
+   NO LONGER USED (October 2026): the Travel page's pins are now handled by
+   the main RSVP script (Code.gs: getPins, addPin, removePin), which reads
+   and writes the same GuestPins spreadsheet. That way a pin can be linked to
+   the guest's RSVP, and only that guest can move or remove it. This file is
+   kept for reference; its old deployment should be archived (it let anyone
+   remove any pin).
    ============================================
 
    SETUP INSTRUCTIONS:

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
-  <link rel="stylesheet" href="css/styles.css?v=109">
+  <link rel="stylesheet" href="css/styles.css?v=113">
 </head>
 <body>
 
@@ -46,10 +46,14 @@
 
       <div class="rsvp-form-container" id="rsvp-form-container">
 
+        <!-- Shown above the form steps while a guest is changing their RSVP
+             from their Your RSVP page (see startEdit in rsvp.js) -->
+        <p class="edit-eyebrow" id="edit-eyebrow" hidden>Updating your RSVP</p>
+
         <!-- Step 1: Name Search -->
         <div class="rsvp-step active" id="step-1">
           <h3 class="step-heading">Find your invitation</h3>
-          <p class="step-description">Search for your name to find your invitation.</p>
+          <p class="step-description">Search for your name to find your invitation. Already RSVPed? Search your name to get a link to view or update it.</p>
           <div class="form-group">
             <label for="guest-search">Your name</label>
             <input type="text" id="guest-search" placeholder="First and last name" autocomplete="off">
@@ -138,6 +142,7 @@
             <input type="text" id="special-song-input" placeholder="Song title and artist">
           </div>
           <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back edit-only" data-edit-back>Back</button>
             <button type="button" class="step-btn step-btn--skip">Skip</button>
             <button type="button" class="step-btn step-btn--next" data-dir="next">Continue</button>
           </div>
@@ -152,6 +157,7 @@
             <textarea id="song-request" rows="3" placeholder="Song title and artist"></textarea>
           </div>
           <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back edit-only" data-edit-back>Back</button>
             <button type="button" class="step-btn step-btn--skip">Skip</button>
             <button type="button" class="step-btn step-btn--next" data-dir="next">Continue</button>
           </div>
@@ -159,18 +165,18 @@
 
         <!-- Part 2: Photo upload -->
         <div class="rsvp-step" id="step-photo">
-          <h3 class="step-heading">Share a photo</h3>
-          <p class="step-description">Upload a favorite photo of you with us for our wedding day slideshow.</p>
+          <h3 class="step-heading">Share photos</h3>
+          <p class="step-description">Share pics from any of your favorite memories with the bride / groom. We&rsquo;ll put them in a slideshow to show on the wedding day.</p>
           <div class="photo-upload-area" id="photo-upload-area">
             <div class="upload-dropzone" id="upload-dropzone">
               <p class="upload-text">Browse photos</p>
-              <p class="upload-hint">JPG or PNG, up to 10 MB</p>
-              <input type="file" id="photo-input" accept="image/*" class="visually-hidden">
+              <p class="upload-hint">You can choose more than one. JPG or PNG, up to 10 MB each.</p>
+              <!-- "multiple" lets guests pick several photos at once -->
+              <input type="file" id="photo-input" accept="image/*" multiple class="visually-hidden">
             </div>
-            <div class="upload-preview" id="upload-preview" style="display:none;">
-              <img id="preview-img" src="" alt="Preview">
-              <button type="button" class="remove-photo" id="remove-photo">Remove</button>
-            </div>
+            <!-- The photos they've chosen, as thumbnails (each can be removed),
+                 plus a tile to add more. Built by renderPhotoPreviews() in rsvp.js -->
+            <div class="upload-previews" id="upload-previews" hidden></div>
           </div>
           <div class="step-nav">
             <button type="button" class="step-btn step-btn--skip">Skip</button>
@@ -189,13 +195,60 @@
           </div>
         </div>
 
+        <!-- Your RSVP: what a guest told us, with ways to change it. Opened from
+             the button in their emails (rsvp.html?code=...). The cards are
+             built by renderSummary() in rsvp.js. -->
+        <div class="rsvp-step" id="step-summary" style="display:none;">
+          <svg class="summary-check" id="summary-check" viewBox="0 0 52 52" aria-hidden="true" hidden>
+            <circle cx="26" cy="26" r="24"/>
+            <path d="M16.5 26.5 L23 33 L36 19.5"/>
+          </svg>
+          <h3 class="step-heading" id="summary-heading">Your RSVP</h3>
+          <p class="step-description" id="summary-subheader"></p>
+          <div id="summary-cards"></div>
+          <p class="summary-small" id="summary-small"></p>
+          <!-- For adding photos from the Photos row -->
+          <input type="file" id="summary-photo-input" accept="image/*" multiple class="visually-hidden">
+        </div>
+
+        <!-- Already RSVPed: they picked their name in the search. For privacy,
+             nothing about their RSVP shows here; we email a private link to
+             the address used for their RSVP. -->
+        <div class="rsvp-step" id="step-already" style="display:none;">
+          <svg class="envelope-art" viewBox="0 0 64 52" aria-hidden="true">
+            <rect x="4" y="10" width="48" height="34" rx="4"/>
+            <path d="M5.5 12.5 L28 30 L50.5 12.5"/>
+          </svg>
+          <h3 class="step-heading">You&rsquo;ve already RSVPed</h3>
+          <p class="step-description" id="already-text">Want to see your RSVP or make changes? We&rsquo;ll email a private link to the address used for your RSVP.</p>
+          <div class="step-nav step-nav--center" id="already-buttons">
+            <button type="button" class="step-btn step-btn--back" id="already-back">Search again</button>
+            <button type="button" class="step-btn step-btn--next" id="already-send">Email me a link</button>
+          </div>
+          <p class="step-description decline-small">Don&rsquo;t have that email anymore? Write to us at <a href="mailto:jennaliam2027@gmail.com">jennaliam2027@gmail.com</a> and we&rsquo;ll help.</p>
+        </div>
+
+        <div class="rsvp-step" id="step-link-sent" style="display:none;">
+          <svg class="envelope-art" viewBox="0 0 64 52" aria-hidden="true">
+            <rect x="4" y="10" width="48" height="34" rx="4"/>
+            <path d="M5.5 12.5 L28 30 L50.5 12.5"/>
+            <circle cx="51" cy="13" r="10" class="envelope-badge"/>
+            <path d="M46.5 13.2 L49.8 16.5 L55.8 10"/>
+          </svg>
+          <h3 class="step-heading">Check your email</h3>
+          <p class="step-description" id="link-sent-text">We sent you a link. It can take a few minutes to arrive, so check your spam folder too.</p>
+          <div class="step-nav step-nav--center">
+            <button type="button" class="step-btn step-btn--back" id="link-resend">Send it again</button>
+          </div>
+        </div>
+
         <!-- "Can't make it" screen -->
         <div class="rsvp-step" id="step-decline" style="display:none;">
           <!-- Flower and vines drawing, added by rsvp.js (same one as the loader) -->
           <div id="decline-art"></div>
           <h3 class="step-heading">We'll miss you</h3>
-          <p class="step-description">Thanks for letting us know. We&rsquo;ll find another time to see each other!</p>
-          <p class="step-description decline-small">If your plans change before May 24, we&rsquo;ve emailed you a link to update your RSVP.</p>
+          <p class="step-description" id="decline-text">Thanks for letting us know. We&rsquo;ll find another time to see each other!</p>
+          <p class="step-description decline-small" id="decline-small">If your plans change before May 24, we&rsquo;ve emailed you a link to update your RSVP.</p>
           <div class="step-nav step-nav--center">
             <a href="index.html" class="step-btn step-btn--back decline-home">Back to home</a>
           </div>
@@ -379,6 +432,6 @@
   </footer>
 
   <script src="js/main.js?v=4"></script>
-  <script src="js/rsvp.js?v=39"></script>
+  <script src="js/rsvp.js?v=42"></script>
 </body>
 </html>
