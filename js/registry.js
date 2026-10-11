@@ -10,6 +10,28 @@
   // Same Apps Script web app as the RSVP + photos features
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMldY7OfwgI-AaEhLRxgqVW_Du_Z9YdANivvVzGfA7MkVMFaA_MkPbyMPYcqSW2SszOQ/exec';
 
+  // Sends a purchase or donation to the script, without waiting for its
+  // reply (same approach as the RSVP form, see postToScript in rsvp.js).
+  //
+  // Why: every request to the script takes two hops. Hop 1 runs the script
+  // (this is where it's saved), then says "go pick up the reply over here".
+  // In Safari, that second pickup can hang even though everything saved, so
+  // guests would see an error and try again (adding duplicate donations).
+  // Hearing back from hop 1 ("opaqueredirect") means the script finished, so
+  // we treat that as saved. Trade-off: we can't read the script's answer. For
+  // purchases that's fine: "someone else already reserved it" ends the same
+  // way (the card shows Reserved).
+  function postToScript(payload) {
+    return fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      redirect: 'manual'
+    }).then(function (r) {
+      if (r.type === 'opaqueredirect' || r.ok) return { success: true };
+      throw new Error('HTTP ' + r.status);
+    });
+  }
+
   var grid = document.getElementById('registry-grid');
   var statusEl = document.getElementById('registry-status');
 
@@ -719,17 +741,13 @@
     donationConfirm.disabled = true;
     donationConfirm.textContent = 'Saving…';
 
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'recordDonation',
-        charity: activeCharity,
-        name: name,
-        amount: donorAmount.value.trim(),
-        note: donorNote.value.trim()
-      })
+    postToScript({
+      action: 'recordDonation',
+      charity: activeCharity,
+      name: name,
+      amount: donorAmount.value.trim(),
+      note: donorNote.value.trim()
     })
-      .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res.success) {
           closeDonationModal();
@@ -822,17 +840,13 @@
     confirmBtn.textContent = 'Saving…';
 
     var itemId = activeItemId;
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'markPurchased',
-        itemId: itemId,
-        buyerName: name,
-        buyerEmail: '',
-        note: note
-      })
+    postToScript({
+      action: 'markPurchased',
+      itemId: itemId,
+      buyerName: name,
+      buyerEmail: '',
+      note: note
     })
-      .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res.success || res.error === 'already-reserved') {
           // Either we reserved it, or someone else beat us to it — both mean
