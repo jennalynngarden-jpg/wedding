@@ -122,6 +122,17 @@ function loadGuestPhotos() {
         track.innerHTML = '';
         dotsContainer.innerHTML = '';
 
+        // Shuffle the photos so they show in a different random order on
+        // each visit, instead of always oldest upload first. (This is the
+        // "Fisher-Yates" shuffle: walk backward through the list, swapping
+        // each photo with a randomly picked one at or before it.)
+        for (var s = data.photos.length - 1; s > 0; s--) {
+          var r = Math.floor(Math.random() * (s + 1));
+          var temp = data.photos[s];
+          data.photos[s] = data.photos[r];
+          data.photos[r] = temp;
+        }
+
         // Add photos to carousel
         for (var i = 0; i < data.photos.length; i++) {
           var photo = data.photos[i];
