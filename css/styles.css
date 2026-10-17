@@ -2118,6 +2118,13 @@ body.map-fullscreen-open {
   display: none;
 }
 
+/* Guest photos come in all shapes, so the frame's height changes from photo
+   to photo. Pin the arrows a fixed distance from the top (about the middle of
+   a typical wide photo) so they stay put instead of sliding up and down. */
+#memories-carousel .photo-carousel-arrow {
+  top: 190px;
+}
+
 /* ---------- 13. Wedding Party ---------- */
 .party-columns {
   display: grid;
@@ -5248,6 +5255,10 @@ a.pin-step-link {
 
   .photo-carousel-arrow--right {
     right: 0.5rem;
+  }
+
+  #memories-carousel .photo-carousel-arrow {
+    top: 115px;
   }
 
   .party-columns {
