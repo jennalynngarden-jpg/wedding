@@ -46,6 +46,20 @@ body {
   overflow-x: clip;
 }
 
+/* Keep the footer at the bottom of the screen on short pages: the page is a
+   column at least as tall as the window, and the main content stretches to
+   fill any leftover space, which pushes the footer down. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh; /* phones: the visible height, not counting the address bar */
+}
+
+main {
+  flex: 1 0 auto;
+}
+
 img {
   max-width: 100%;
   height: auto;
@@ -4514,11 +4528,16 @@ a.pin-step-link {
   padding: 0.5rem 0.5rem;
 }
 
-.meal-option input[type="radio"] {
+.meal-option input[type="radio"],
+.meal-option input[type="checkbox"] {
   accent-color: var(--color-sage);
   flex-shrink: 0;
-  /* Nudge down so it lines up with the first line of text */
-  margin-top: 0.15rem;
+  /* Exact size and spacing (browsers each add their own otherwise). The
+     first line of text is 20px tall, so a 16px box with 2px on top sits
+     centered on it, in every browser. */
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
 }
 
 .meal-option-text {
@@ -4536,6 +4555,7 @@ a.pin-step-link {
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--color-text);
+  line-height: 20px; /* matches the radio/checkbox spacing above */
 }
 
 .meal-option-description {
@@ -5698,13 +5718,6 @@ a.pin-undo-btn[hidden] {
   max-width: none;
 }
 
-/* Checkboxes match the green radio buttons */
-.meal-option input[type="checkbox"] {
-  accent-color: var(--color-sage);
-  flex-shrink: 0;
-  margin-top: 0.15rem;
-}
-
 /* The first choice gets hidden from "What else would you be open to?" */
 .meal-option[hidden] {
   display: none;
@@ -5721,4 +5734,21 @@ a.pin-undo-btn[hidden] {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Stay form: tighter option lists than the RSVP dinner choices */
+.stay-form .meal-options {
+  gap: 0;
+}
+
+.stay-form .meal-option {
+  padding: 0.3rem 0.5rem;
+}
+
+.stay-form .meal-option-text {
+  gap: 0;
+}
+
+.stay-form .meal-option-description {
+  line-height: 1.45;
 }

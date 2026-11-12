@@ -1574,8 +1574,10 @@ function submitStaySurvey(data) {
 // commas), not in this code, so they stay out of the public website files.
 // Run from the Apps Script editor:
 //   stayInvitePreview: sends YOU a copy to check.
-//   stayInviteSend:    sends it once, as one group email, to everyone in
-//                      WEDDING_PARTY_EMAILS. Running it again won't resend.
+//   stayInviteSend:    sends it as one group email to everyone in
+//                      WEDDING_PARTY_EMAILS who hasn't gotten it yet. To send
+//                      a second batch, add the new addresses to the list and
+//                      run it again: only the new people get it.
 function composeStayInvite() {
   return buildGuestEmail({
     subject: 'For wedding party only: Where should we all stay?',
@@ -1599,19 +1601,24 @@ function stayInvitePreview() {
 
 function stayInviteSend() {
   var props = PropertiesService.getScriptProperties();
-  if (props.getProperty('STAY_INVITE_SENT')) {
-    console.log('Already sent on ' + props.getProperty('STAY_INVITE_SENT') + ', so nothing was sent again.');
-    return;
-  }
-  var to = String(props.getProperty('WEDDING_PARTY_EMAILS') || '')
-    .split(/[,\s]+/).filter(function (x) { return x.indexOf('@') > 0; });
-  if (!to.length) {
+  var list = function (v) {
+    return String(v || '').toLowerCase().split(/[,\s]+/).filter(function (x) { return x.indexOf('@') > 0; });
+  };
+  var all = list(props.getProperty('WEDDING_PARTY_EMAILS'));
+  if (!all.length) {
     console.log('Add WEDDING_PARTY_EMAILS in Project Settings > Script properties first (addresses separated by commas).');
     return;
   }
+  // Who already got it (saved after each send), so no one gets it twice
+  var already = list(props.getProperty('STAY_INVITE_SENT_TO'));
+  var to = all.filter(function (x) { return already.indexOf(x) < 0; });
+  if (!to.length) {
+    console.log('Everyone in WEDDING_PARTY_EMAILS already has it, so nothing was sent.');
+    return;
+  }
   sendComposedEmail(to.join(','), composeStayInvite());
-  props.setProperty('STAY_INVITE_SENT', new Date().toString());
-  console.log('Sent to ' + to.length + ' people as one group email.');
+  props.setProperty('STAY_INVITE_SENT_TO', already.concat(to).join(','));
+  console.log('Sent to ' + to.length + ' people as one group email: ' + to.join(', '));
 }
 
 /* ---------- GET: Look up an RSVP from an email link ---------- */
