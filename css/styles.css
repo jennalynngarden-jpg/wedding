@@ -5655,8 +5655,18 @@ a.pin-undo-btn[hidden] {
    Reuses the RSVP form's steps, buttons, and option rows (.meal-option);
    these are just the few extra pieces it needs.
    ======================================== */
+/* Center the form between the menu and the footer when it's shorter than
+   the window (longer steps just start at the top, as usual) */
+.stay-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .stay-section {
+  width: 100%;
   padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
 }
 
 /* Small green label above each step's heading, like "WEDDING PARTY FORM · 1 OF 4" */
