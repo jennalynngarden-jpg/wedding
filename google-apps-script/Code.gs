@@ -173,6 +173,9 @@ function doPost(e) {
   if (action === 'recordDonation') {
     return recordDonation(data);
   }
+  if (action === 'submitStaySurvey') {
+    return submitStaySurvey(data);
+  }
 
   return jsonResponse({ error: 'Unknown action' });
 }
@@ -1516,6 +1519,99 @@ function countdownPreview() {
     sendComposedEmail(me, email);
   });
   console.log('Sent you a preview of each countdown email. Nothing was sent to guests.');
+}
+
+/* ---------- Wedding party stay form (jennaliam.info/stay) ---------- */
+// An anonymous form for the wedding party about where they'd like to stay.
+// Answers go to the "Wedding party stay" tab (made automatically the first
+// time). To keep it anonymous, nothing about the person is saved, and the
+// sheet records only the date, not the time, so an answer can't be matched
+// to when someone got the link.
+var STAY_SHEET = 'Wedding party stay';
+var STAY_COLUMNS = ['Date', 'Nights', 'Optional events', 'Bringing a partner or +1', 'Getting there',
+  'Car while there', 'First choice', 'Also open to', 'Budget per night', 'Must-haves', 'Anything else', 'Response ID'];
+
+function submitStaySurvey(data) {
+  var a = data.answers || {};
+  // Lists become "A, B, C". Anything starting with = + - @ gets a leading '
+  // so the spreadsheet shows it as text instead of treating it as a formula.
+  var cell = function (v) {
+    var s = (Array.isArray(v) ? v.join(', ') : String(v || '')).slice(0, 2000);
+    return /^[=+\-@]/.test(s) ? "'" + s : s;
+  };
+  var id = String(data.id || '').replace(/[^a-z0-9]/gi, '').slice(0, 40);
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = ss.getSheetByName(STAY_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(STAY_SHEET);
+      sheet.appendRow(STAY_COLUMNS);
+      sheet.setFrozenRows(1);
+    }
+    // The page sends a backup copy if Google is slow to answer. Each set of
+    // answers has a random ID (not tied to anyone), so a copy isn't saved twice.
+    if (id && sheet.getLastRow() > 1) {
+      var ids = sheet.getRange(2, STAY_COLUMNS.length, sheet.getLastRow() - 1, 1).getValues();
+      for (var i = 0; i < ids.length; i++) {
+        if (ids[i][0] === id) return jsonResponse({ success: true });
+      }
+    }
+    sheet.appendRow([
+      Utilities.formatDate(new Date(), 'America/Los_Angeles', 'MMM d, yyyy'),
+      cell(a.nights), cell(a.events), cell(a.partner), cell(a.travel), cell(a.car),
+      cell(a.firstChoice), cell(a.openTo), cell(a.budget), cell(a.mustHaves), cell(a.notes), id
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
+  return jsonResponse({ success: true });
+}
+
+// The invite email for the form. The wedding party's addresses are kept in
+// Project Settings > Script properties as WEDDING_PARTY_EMAILS (separated by
+// commas), not in this code, so they stay out of the public website files.
+// Run from the Apps Script editor:
+//   stayInvitePreview: sends YOU a copy to check.
+//   stayInviteSend:    sends it once, as one group email, to everyone in
+//                      WEDDING_PARTY_EMAILS. Running it again won't resend.
+function composeStayInvite() {
+  return buildGuestEmail({
+    subject: 'For wedding party only: Where should we all stay?',
+    hello: 'Hey y’all,',
+    paragraphs: [
+      'We’re so grateful to have you in our wedding party! We’re starting to plan where everyone will stay in Monterey for the weekend, and we want it to work for all of your plans and budgets.',
+      'Could you fill out this quick form by Sunday, November 22? It’s anonymous (so please be honest) and should take about 3 minutes.'
+    ],
+    buttonText: 'Fill out form',
+    link: 'https://jennaliam.info/stay'
+  });
+}
+
+function stayInvitePreview() {
+  var me = Session.getActiveUser().getEmail();
+  var email = composeStayInvite();
+  email.subject = '(Preview) ' + email.subject;
+  sendComposedEmail(me, email);
+  console.log('Sent you a preview. Nothing was sent to the wedding party.');
+}
+
+function stayInviteSend() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('STAY_INVITE_SENT')) {
+    console.log('Already sent on ' + props.getProperty('STAY_INVITE_SENT') + ', so nothing was sent again.');
+    return;
+  }
+  var to = String(props.getProperty('WEDDING_PARTY_EMAILS') || '')
+    .split(/[,\s]+/).filter(function (x) { return x.indexOf('@') > 0; });
+  if (!to.length) {
+    console.log('Add WEDDING_PARTY_EMAILS in Project Settings > Script properties first (addresses separated by commas).');
+    return;
+  }
+  sendComposedEmail(to.join(','), composeStayInvite());
+  props.setProperty('STAY_INVITE_SENT', new Date().toString());
+  console.log('Sent to ' + to.length + ' people as one group email.');
 }
 
 /* ---------- GET: Look up an RSVP from an email link ---------- */

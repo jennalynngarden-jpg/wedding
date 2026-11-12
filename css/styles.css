@@ -5629,3 +5629,96 @@ a.pin-undo-btn[hidden] {
 #summary-heading[hidden] {
   display: none;
 }
+
+/* ========================================
+   Wedding party stay form (stay.html)
+   Reuses the RSVP form's steps, buttons, and option rows (.meal-option);
+   these are just the few extra pieces it needs.
+   ======================================== */
+.stay-section {
+  padding-top: 3.5rem;
+}
+
+/* Small green label above each step's heading, like "WEDDING PARTY FORM · 1 OF 4" */
+.stay-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-sage);
+  text-align: center;
+  margin: 0 auto 0.5rem;
+  max-width: none;
+}
+
+/* "Your answers are anonymous." note on the intro */
+.stay-note {
+  text-align: center;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: none;
+  margin: -0.5rem 0 1rem;
+}
+
+.stay-note strong {
+  font-weight: 600;
+  color: var(--color-sage-hover);
+}
+
+.stay-time {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-light);
+  max-width: none;
+}
+
+/* Each question: no box around it, just the heading and its choices */
+.stay-question {
+  border: none;
+  padding: 0;
+  margin: 0 0 1.75rem;
+  min-width: 0;
+}
+
+.stay-question-label {
+  display: block;
+  padding: 0;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--color-heading);
+  margin-bottom: 0.25rem;
+}
+
+.stay-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  margin: 0 0 0.5rem;
+  max-width: none;
+}
+
+/* Checkboxes match the green radio buttons */
+.meal-option input[type="checkbox"] {
+  accent-color: var(--color-sage);
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+/* The first choice gets hidden from "What else would you be open to?" */
+.meal-option[hidden] {
+  display: none;
+}
+
+/* Thank-you checkmark */
+.stay-check {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  fill: none;
+  stroke: var(--color-sage);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

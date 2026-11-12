@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Where should we all stay? | Jenna & Liam</title>
+  <!-- Only for the wedding party: keep this page out of search results -->
+  <meta name="robots" content="noindex, nofollow">
+  <!-- The preview card shown when this link is texted or shared -->
+  <meta name="description" content="A quick, anonymous form for Jenna and Liam’s wedding party.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jennaliam.info/stay">
+  <meta property="og:title" content="Where should we all stay?">
+  <meta property="og:description" content="A quick, anonymous form for Jenna and Liam’s wedding party.">
+  <meta property="og:image" content="https://jennaliam.info/images/stay-preview.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Nunito+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="images/oak-leaf-favicon.png">
+  <link rel="stylesheet" href="css/styles.css?v=128">
+</head>
+<body>
+
+  <!-- Same menu as the rest of the site (no page highlighted: this form isn't linked from it) -->
+  <nav class="main-nav" id="main-nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-brand">J &amp; L</a>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="our-story.html">Our Story</a></li>
+        <li><a href="timeline.html">Timeline</a></li>
+        <li><a href="travel.html">Travel &amp; FAQs</a></li>
+        <li><a href="things-to-do.html">Things to Do</a></li>
+        <li><a href="photos.html">Photos</a></li>
+        <li><a href="wedding-party.html">Wedding Party</a></li>
+        <li><a href="registry.html">Registry</a></li>
+        <li><a href="rsvp.html">RSVP</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <section class="content-section stay-section">
+      <!-- The form: one step shows at a time (see js/stay.js) -->
+      <form class="rsvp-form-container stay-form" id="stay-form" novalidate>
+
+        <!-- Intro -->
+        <div class="rsvp-step active" data-step="0">
+          <p class="stay-eyebrow">Wedding party only</p>
+          <h3 class="step-heading">Where should we all stay?</h3>
+          <p class="step-description">We&rsquo;d love to find houses for the wedding party to stay in together, but we know everyone&rsquo;s plans and budgets are different. Tell us what works for you, and we&rsquo;ll try to plan around that.</p>
+          <p class="stay-note"><strong>Your answers are anonymous.</strong> This form doesn&rsquo;t ask for your name, so please be honest. We&rsquo;ll only see everyone&rsquo;s answers together.</p>
+          <p class="stay-time">Takes about 3 minutes.</p>
+          <div class="step-nav step-nav--center">
+            <button type="button" class="step-btn step-btn--next" data-dir="next">Get started</button>
+          </div>
+        </div>
+
+        <!-- Step 1: Your weekend plans -->
+        <div class="rsvp-step" data-step="1">
+          <p class="stay-eyebrow">Wedding party form &middot; 1 of 4</p>
+          <h3 class="step-heading">Your weekend plans</h3>
+          <p class="step-description">We&rsquo;ll need everyone in Monterey for the rehearsal on Friday, July 23 at the latest, and then the wedding is the next day on Saturday, July 24.</p>
+
+          <fieldset class="stay-question" data-required="Please choose the nights you plan to stay.">
+            <legend class="stay-question-label">Which nights do you plan to stay?</legend>
+            <p class="stay-hint">Choose all that apply.</p>
+            <div class="meal-options">
+              <label class="meal-option"><input type="checkbox" name="nights" value="Wed, July 21"><span class="meal-option-text"><span class="meal-option-header">Wednesday, July 21</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="nights" value="Thu, July 22"><span class="meal-option-text"><span class="meal-option-header">Thursday, July 22</span><span class="meal-option-description">Welcome dinner, 6:00 PM</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="nights" value="Fri, July 23"><span class="meal-option-text"><span class="meal-option-header">Friday, July 23</span><span class="meal-option-description">Rehearsal + rehearsal dinner</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="nights" value="Sat, July 24"><span class="meal-option-text"><span class="meal-option-header">Saturday, July 24</span><span class="meal-option-description">Wedding</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="nights" value="Sun, July 25"><span class="meal-option-text"><span class="meal-option-header">Sunday, July 25</span><span class="meal-option-description">Picnic at Lover&rsquo;s Point, 11:30 AM</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="nights" value="Not sure yet" data-exclusive><span class="meal-option-text"><span class="meal-option-header">Not sure yet</span></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="stay-question">
+            <legend class="stay-question-label">Which optional events are you planning on attending?</legend>
+            <p class="stay-hint">Choose all that apply.</p>
+            <div class="meal-options">
+              <label class="meal-option"><input type="checkbox" name="events" value="Welcome dinner (Thu)"><span class="meal-option-text"><span class="meal-option-header">Welcome dinner on Thursday</span><span class="meal-option-description">6:00 PM at Gianni&rsquo;s Pizza</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="events" value="Picnic (Sun)"><span class="meal-option-text"><span class="meal-option-header">Picnic at Lover&rsquo;s Point on Sunday</span><span class="meal-option-description">11:30 AM in Pacific Grove</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="events" value="Not sure yet" data-exclusive><span class="meal-option-text"><span class="meal-option-header">Not sure yet</span></span></label>
+            </div>
+          </fieldset>
+
+          <p class="step-error" role="alert" hidden></p>
+          <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
+            <button type="button" class="step-btn step-btn--next" data-dir="next">Continue</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Who's coming with you -->
+        <div class="rsvp-step" data-step="2">
+          <p class="stay-eyebrow">Wedding party form &middot; 2 of 4</p>
+          <h3 class="step-heading">Who&rsquo;s coming with you</h3>
+          <p class="step-description">This helps us figure out how many beds we&rsquo;ll need.</p>
+
+          <fieldset class="stay-question" data-required="Please let us know if you’re bringing anyone.">
+            <legend class="stay-question-label">Are you bringing your partner, or a +1?</legend>
+            <div class="meal-options">
+              <label class="meal-option"><input type="radio" name="partner" value="Yes"><span class="meal-option-text"><span class="meal-option-header">Yes</span></span></label>
+              <label class="meal-option"><input type="radio" name="partner" value="No, just me"><span class="meal-option-text"><span class="meal-option-header">No, just me</span></span></label>
+              <label class="meal-option"><input type="radio" name="partner" value="Not sure yet"><span class="meal-option-text"><span class="meal-option-header">Not sure yet</span></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="stay-question" data-required="Please choose how you’re getting to Monterey.">
+            <legend class="stay-question-label">How are you getting to Monterey?</legend>
+            <div class="meal-options">
+              <label class="meal-option"><input type="radio" name="travel" value="Driving"><span class="meal-option-text"><span class="meal-option-header">Driving</span></span></label>
+              <label class="meal-option"><input type="radio" name="travel" value="Flying into MRY"><span class="meal-option-text"><span class="meal-option-header">Flying into Monterey (MRY)</span></span></label>
+              <label class="meal-option"><input type="radio" name="travel" value="Flying into SJC"><span class="meal-option-text"><span class="meal-option-header">Flying into San Jose (SJC)</span></span></label>
+              <label class="meal-option"><input type="radio" name="travel" value="Flying into SFO"><span class="meal-option-text"><span class="meal-option-header">Flying into San Francisco (SFO)</span></span></label>
+              <label class="meal-option"><input type="radio" name="travel" value="Not sure yet"><span class="meal-option-text"><span class="meal-option-header">Not sure yet</span></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="stay-question" data-required="Please let us know if you’ll have a car.">
+            <legend class="stay-question-label">Will you have a car while you&rsquo;re there?</legend>
+            <div class="meal-options">
+              <label class="meal-option"><input type="radio" name="car" value="Yes"><span class="meal-option-text"><span class="meal-option-header">Yes</span></span></label>
+              <label class="meal-option"><input type="radio" name="car" value="No"><span class="meal-option-text"><span class="meal-option-header">No</span></span></label>
+              <label class="meal-option"><input type="radio" name="car" value="Not sure yet"><span class="meal-option-text"><span class="meal-option-header">Not sure yet</span></span></label>
+            </div>
+          </fieldset>
+
+          <p class="step-error" role="alert" hidden></p>
+          <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
+            <button type="button" class="step-btn step-btn--next" data-dir="next">Continue</button>
+          </div>
+        </div>
+
+        <!-- Step 3: Where you'd like to stay -->
+        <div class="rsvp-step" data-step="3">
+          <p class="stay-eyebrow">Wedding party form &middot; 3 of 4</p>
+          <h3 class="step-heading">Where you&rsquo;d like to stay</h3>
+          <p class="step-description">There are no wrong answers here!</p>
+
+          <fieldset class="stay-question" data-required="Please choose your first choice.">
+            <legend class="stay-question-label">What&rsquo;s your first choice?</legend>
+            <div class="meal-options">
+              <label class="meal-option"><input type="radio" name="firstChoice" value="House with part of the wedding party"><span class="meal-option-text"><span class="meal-option-header">A house with part of the wedding party</span><span class="meal-option-description">We would probably split bridesmaids + groomsmen across 2 houses, so ~7 people in each. Will probably run ~$115-230/night per person.</span></span></label>
+              <label class="meal-option"><input type="radio" name="firstChoice" value="Smaller place with a few people"><span class="meal-option-text"><span class="meal-option-header">A smaller place with a few people</span><span class="meal-option-description">Just you and 1-2 other couples / friends.</span></span></label>
+              <label class="meal-option"><input type="radio" name="firstChoice" value="Hotel room block"><span class="meal-option-text"><span class="meal-option-header">Our hotel room block</span><span class="meal-option-description">Portola Hotel &amp; Spa, $309/night plus tax.</span></span></label>
+              <label class="meal-option"><input type="radio" name="firstChoice" value="Own place"><span class="meal-option-text"><span class="meal-option-header">Your own place</span><span class="meal-option-description">An Airbnb or hotel room just for you.</span></span></label>
+              <label class="meal-option"><input type="radio" name="firstChoice" value="Family or friends"><span class="meal-option-text"><span class="meal-option-header">Staying with family or friends</span><span class="meal-option-description">Somewhere nearby that&rsquo;s already sorted.</span></span></label>
+            </div>
+          </fieldset>
+
+          <!-- Whatever they pick as their first choice is hidden from this list (see stay.js) -->
+          <fieldset class="stay-question">
+            <legend class="stay-question-label">What else would you be open to?</legend>
+            <p class="stay-hint">Choose all that apply.</p>
+            <div class="meal-options">
+              <label class="meal-option"><input type="checkbox" name="openTo" value="House with part of the wedding party"><span class="meal-option-text"><span class="meal-option-header">A house with part of the wedding party</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="openTo" value="Smaller place with a few people"><span class="meal-option-text"><span class="meal-option-header">A smaller place with a few people</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="openTo" value="Hotel room block"><span class="meal-option-text"><span class="meal-option-header">Our hotel room block</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="openTo" value="Own place"><span class="meal-option-text"><span class="meal-option-header">Your own place</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="openTo" value="Family or friends"><span class="meal-option-text"><span class="meal-option-header">Staying with family or friends</span></span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="stay-question" data-required="Please choose what you can spend per night.">
+            <legend class="stay-question-label">What can you spend per night?</legend>
+            <p class="stay-hint">Total for your space, including anyone coming with you.</p>
+            <div class="meal-options">
+              <label class="meal-option"><input type="radio" name="budget" value="Under $150"><span class="meal-option-text"><span class="meal-option-header">Under $150</span></span></label>
+              <label class="meal-option"><input type="radio" name="budget" value="$150 to $250"><span class="meal-option-text"><span class="meal-option-header">$150 to $250</span></span></label>
+              <label class="meal-option"><input type="radio" name="budget" value="$250 to $350"><span class="meal-option-text"><span class="meal-option-header">$250 to $350</span></span></label>
+              <label class="meal-option"><input type="radio" name="budget" value="$350 to $450"><span class="meal-option-text"><span class="meal-option-header">$350 to $450</span></span></label>
+              <label class="meal-option"><input type="radio" name="budget" value="More than $450"><span class="meal-option-text"><span class="meal-option-header">More than $450</span></span></label>
+              <label class="meal-option"><input type="radio" name="budget" value="Rather talk about it"><span class="meal-option-text"><span class="meal-option-header">I&rsquo;d rather talk about it</span></span></label>
+            </div>
+          </fieldset>
+
+          <p class="step-error" role="alert" hidden></p>
+          <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
+            <button type="button" class="step-btn step-btn--next" data-dir="next">Continue</button>
+          </div>
+        </div>
+
+        <!-- Step 4: What matters to you -->
+        <div class="rsvp-step" data-step="4">
+          <p class="stay-eyebrow">Wedding party form &middot; 4 of 4</p>
+          <h3 class="step-heading">What matters to you</h3>
+          <p class="step-description">Tell us what would make the weekend comfortable.</p>
+
+          <fieldset class="stay-question">
+            <legend class="stay-question-label">Any must-haves?</legend>
+            <p class="stay-hint">Choose all that apply.</p>
+            <div class="meal-options">
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Private bedroom"><span class="meal-option-text"><span class="meal-option-header">A private bedroom</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Private bathroom"><span class="meal-option-text"><span class="meal-option-header">A private bathroom</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Quiet spot for early bedtimes"><span class="meal-option-text"><span class="meal-option-header">A quiet spot for early bedtimes</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Crib or pack-and-play"><span class="meal-option-text"><span class="meal-option-header">A crib or pack-and-play</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="No stairs"><span class="meal-option-text"><span class="meal-option-header">No stairs</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Kitchen"><span class="meal-option-text"><span class="meal-option-header">A kitchen</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Parking"><span class="meal-option-text"><span class="meal-option-header">Parking</span></span></label>
+              <label class="meal-option"><input type="checkbox" name="mustHaves" value="Walking distance to downtown"><span class="meal-option-text"><span class="meal-option-header">Walking distance to downtown Monterey</span></span></label>
+            </div>
+          </fieldset>
+
+          <div class="form-group stay-question">
+            <label class="stay-question-label" for="stay-notes">Anything else we should know?</label>
+            <p class="stay-hint">Optional.</p>
+            <textarea id="stay-notes" name="notes" rows="3" maxlength="2000" placeholder="Allergies, accessibility needs, light sleepers, anything!"></textarea>
+          </div>
+
+          <p class="step-error" role="alert" hidden></p>
+          <div class="step-nav">
+            <button type="button" class="step-btn step-btn--back" data-dir="prev">Back</button>
+            <button type="button" class="step-btn step-btn--submit" id="stay-submit">Submit</button>
+          </div>
+        </div>
+
+        <!-- Thank you -->
+        <div class="rsvp-step" data-step="5">
+          <svg class="stay-check" viewBox="0 0 56 56" aria-hidden="true">
+            <circle cx="28" cy="28" r="26"/>
+            <path d="M18 28.6l7 7L38.5 21"/>
+          </svg>
+          <p class="stay-eyebrow">Wedding party form</p>
+          <h3 class="step-heading">Thank you!</h3>
+          <p class="step-description">We&rsquo;ll put together a few options and share them soon. Feel free to text us if your answers change, too.</p>
+        </div>
+
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="crest crest--small">
+      <img class="oak-crest oak-crest--small" src="images/oak-crest.png" alt="Oak leaf crest">
+    </div>
+    <p class="footer-names">Jenna <span class="ampersand">&amp;</span> Liam</p>
+    <p class="footer-date">July 24, 2027 &middot; Monterey, California</p>
+  </footer>
+
+  <script src="js/main.js?v=4"></script>
+  <script src="js/stay.js?v=1"></script>
+</body>
+</html>
