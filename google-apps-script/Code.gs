@@ -1550,6 +1550,9 @@ function submitStaySurvey(data) {
       sheet.appendRow(STAY_COLUMNS);
       sheet.setFrozenRows(1);
     }
+    // Keep answers as plain text. Otherwise the spreadsheet reads a single
+    // night like "Sat, July 24" as a date and changes it.
+    sheet.getRange('B:L').setNumberFormat('@');
     // The page sends a backup copy if Google is slow to answer. Each set of
     // answers has a random ID (not tied to anyone), so a copy isn't saved twice.
     if (id && sheet.getLastRow() > 1) {

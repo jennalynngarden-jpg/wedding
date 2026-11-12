@@ -5669,6 +5669,41 @@ a.pin-undo-btn[hidden] {
   padding-bottom: 3.5rem;
 }
 
+/* The RSVP form keeps a minimum height; this one doesn't, so short screens
+   (like the thank-you) stay truly centered */
+.stay-form {
+  min-height: 0;
+}
+
+/* The little house on the intro */
+.confirm-art--house { width: 170px; }
+
+@media (max-width: 600px) {
+  .confirm-art--house { width: 140px; }
+
+  /* Bigger, easier-to-tap choices on phones. The first line is 22px tall,
+     so an 18px box with 2px on top stays centered on it. */
+  .stay-form .meal-option-header {
+    font-size: 0.95rem;
+    line-height: 22px;
+  }
+
+  .stay-form .meal-option-description {
+    font-size: 0.82rem;
+  }
+
+  .stay-form .meal-option input[type="radio"],
+  .stay-form .meal-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+  }
+
+  .stay-form .meal-option {
+    gap: 0.85rem;
+  }
+}
+
 /* Small green label above each step's heading, like "WEDDING PARTY FORM · 1 OF 4" */
 .stay-eyebrow {
   font-family: var(--font-sans);
