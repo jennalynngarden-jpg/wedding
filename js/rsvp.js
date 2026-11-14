@@ -1156,7 +1156,9 @@
     var text = document.getElementById('already-text');
     var buttons = document.getElementById('already-buttons');
     var sendBtn = document.getElementById('already-send');
+    var note = document.getElementById('already-note');
     text.textContent = 'Want to see your RSVP or make changes? We’ll email a private link to the address used for your RSVP.';
+    note.hidden = false;
     sendBtn.hidden = false;
     sendBtn.disabled = false;
     buttons.hidden = false;
@@ -1168,8 +1170,13 @@
           state.alreadyMasked = data.masked;
           text.textContent = 'Want to see your RSVP or make changes? We’ll email a private link to the address used for your RSVP: ' + data.masked;
         } else {
-          text.textContent = 'We don’t have an email address for your RSVP, so we can’t send you a link. Write to us and we’ll help.';
+          // No email on file: there's no link to send, so point them to our
+          // inbox here, and hide the "Don't use that email anymore?" note
+          // (there's no email for it to be about)
+          text.innerHTML = 'We don’t have an email address for your RSVP, so we can’t send you a link. ' +
+            'Email us at <a href="mailto:jennaliam2027@gmail.com">jennaliam2027@gmail.com</a> and we’ll help.';
           sendBtn.hidden = true;
+          note.hidden = true;
         }
       })
       .catch(function () {});
